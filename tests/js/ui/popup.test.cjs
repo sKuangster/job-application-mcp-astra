@@ -78,12 +78,12 @@ test('popup controls call the right endpoints; stop needs confirmation', async (
     // attention actions
     const item = p.doc.querySelector('.att-item');
     click(p.win, item.querySelector('[data-action="open"]'));
-    click(p.win, item.querySelector('[data-action="resume"]'));
+    click(p.win, item.querySelector('[data-action="retry_captcha"]'));
     click(p.win, item.querySelector('[data-action="skip"]'));
     await waitFor(() => p.calls.filter((c) => c.path.endsWith('/action')).length === 3);
     const acts = p.calls.filter((c) => c.path.endsWith('/action'));
     assert.deepEqual(acts.map((a) => a.path), Array(3).fill('/api/applications/app-099/action'));
-    assert.deepEqual(acts.map((a) => a.body.action), ['open', 'resume', 'skip']);
+    assert.deepEqual(acts.map((a) => a.body.action), ['open', 'retry_captcha', 'skip']);
   } finally { p.close(); }
 });
 
