@@ -1,0 +1,50 @@
+# FICTIONAL TEST PERSONA — used only by the automated tests.
+identity:
+  first_name: Testy
+  last_name: McFixture
+  preferred_name: null
+  email: testy.fixture@example.com
+  phone: "+1 555 010 0199"
+address:
+  street: 1 Fixture Way
+  street2: null
+  city: Seattle
+  region: WA
+  postal_code: "98101"
+  country: United States
+links:
+  linkedin: https://www.linkedin.com/in/testy-fixture
+  github: https://github.com/testy-fixture
+  portfolio: null
+  website: null
+education:
+  university: Fixture State University
+  degree_level: bachelor
+  degree: Bachelor of Science in Computer Science
+  major: Computer Science
+  minor: null
+  start_date: "2024-09-01"
+  graduation_date: "2028-05-15"
+  gpa: 3.7
+  gpa_scale: 4.0
+  currently_enrolled: true
+work_authorization:
+  US:
+    authorized: true
+    requires_sponsorship_now: false
+    requires_sponsorship_future: false
+    citizen: true
+    permanent_resident: false
+eligibility:
+  citizenships: [US]
+  age_18_or_older: true
+experience:
+  current_employer: null
+  current_title: null
+  total_years: 0
+  employers: [{company: Fixture Labs, title: Software Intern}]
+  employment_history_complete: true
+  skills: [Python, TypeScript]
+factual_answers:
+  - question: "Do you have any relatives employed by this company?"
+    value: false

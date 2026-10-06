@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Data Engineer - Fixture Analytics</title>
+<style>
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #212529; background: #f8f9fa; }
+  main { max-width: 680px; margin: 24px auto; background: #fff; padding: 24px 32px; border: 1px solid #dee2e6; border-radius: 6px; }
+  .form-group { margin: 14px 0; }
+  .form-group label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .form-control { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 15px; }
+  .form-control.is-invalid { border-color: #dc3545; }
+  .invalid-feedback { color: #dc3545; font-size: 13px; margin-top: 4px; }
+  .alert-danger { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; border-radius: 4px; padding: 12px; margin: 12px 0; }
+  .btn-primary { background: #0d6efd; color: #fff; border: 0; border-radius: 4px; padding: 10px 24px; font-size: 15px; cursor: pointer; }
+  .btn-primary[disabled] { opacity: .6; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<main id="app" data-fixture-root>
+  <h1>Fixture Analytics — Data Engineer</h1>
+  <p>Remote (US) &middot; Full-time</p>
+  <p>Fixture Analytics helps retailers understand demand. As a Data Engineer you will build batch and streaming pipelines, own our warehouse models, and partner with analysts to deliver trustworthy metrics.</p>
+  <div id="server-errors" hidden></div>
+  <form id="application-form" method="post" action="#" novalidate>
+    <div class="form-group">
+      <label for="full_name">Full Name *</label>
+      <input type="text" class="form-control" id="full_name" name="full_name" required autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label for="email">Email *</label>
+      <input type="email" class="form-control" id="email" name="email" required autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label for="phone">Phone *</label>
+      <input type="tel" class="form-control" id="phone" name="phone" required autocomplete="tel" placeholder="+1 555-555-5555">
+    </div>
+    <div class="form-group">
+      <label for="interest">Why are you interested?</label>
+      <textarea class="form-control" id="interest" name="interest" rows="5"></textarea>
+    </div>
+    <button type="submit" class="btn-primary" id="submit-btn">Submit Application</button>
+  </form>
+</main>
+<script src="../kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.FixtureKit;
+  var form = document.getElementById("application-form");
+  var serverErrors = document.getElementById("server-errors");
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  window.__validationAttempts = 0;
+  window.__validationServerRejections = 0;
+
+  function setError(el, msg) {
+    var id = el.id + "-error";
+    var node = document.getElementById(id);
+    if (!node) {
+      node = document.createElement("div");
+      node.id = id;
+      node.className = "invalid-feedback field-error";
+      el.parentNode.appendChild(node);
+    }
+    node.textContent = msg;
+    el.classList.add("is-invalid");
+    el.setAttribute("aria-invalid", "true");
+    el.setAttribute("aria-describedby", id);
+  }
+  function clearAll() {
+    Array.prototype.forEach.call(form.querySelectorAll(".invalid-feedback"), function (n) { n.remove(); });
+    Array.prototype.forEach.call(form.querySelectorAll(".is-invalid"), function (n) {
+      n.classList.remove("is-invalid");
+      n.removeAttribute("aria-invalid");
+      n.removeAttribute("aria-describedby");
+    });
+  }
+  function v(id) { return String(document.getElementById(id).value || "").trim(); }
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    window.__validationAttempts++;
+    clearAll();
+    serverErrors.hidden = true;
+    serverErrors.innerHTML = "";
+
+    // client-side checks
+    var bad = [];
+    ["full_name", "email", "phone"].forEach(function (id) {
+      if (!v(id)) { setError(document.getElementById(id), "This field is required."); bad.push(id); }
+    });
+    if (v("email") && !EMAIL_RE.test(v("email"))) { setError(document.getElementById("email"), "Please enter a valid email address."); bad.push("email"); }
+    if (bad.length) { document.getElementById(bad[0]).focus(); return; }
+
+    // simulated server-side validation (no POST when rejected)
+    var phone = v("phone");
+    var digits = phone.replace(/\D/g, "");
+    if (phone.charAt(0) !== "+" || digits.length < 11) {
+      window.__validationServerRejections++;
+      serverErrors.innerHTML = '<div class="alert alert-danger" role="alert">There were problems with your submission. Please review the errors below.</div>';
+      serverErrors.hidden = false;
+      setError(document.getElementById("phone"), "Please enter a valid phone number in the format +1 555-555-5555");
+      document.getElementById("phone").focus();
+      return;
+    }
+
+    submitted = true;
+    document.getElementById("submit-btn").disabled = true;
+    K.submit("validation", K.collect(form), {
+      confirm: function () {
+        document.getElementById("app").innerHTML =
+          '<div class="confirmation"><h1>Application received</h1><p>Thank you for applying.</p></div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

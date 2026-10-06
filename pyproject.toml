@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "applypilot"
+version = "1.0.0"
+description = "Autonomous, auditable job-application agent: MCP reasoning (Astra/ChatGPT) + Firefox DOM automation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "mcp>=1.26,<2",
+  "httpx>=0.28,<1",
+  "pydantic>=2.10,<3",
+  "PyYAML>=6,<7",
+  "beautifulsoup4>=4.13,<5",
+  "python-dotenv>=1,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<10",
+  "pytest-asyncio>=0.25,<2",
+  "pytest-cov>=6,<8",
+  "ruff>=0.11",
+  "mypy>=1.15",
+  "types-PyYAML",
+  "types-beautifulsoup4",
+]
+keyring = ["keyring>=25"]
+
+[project.scripts]
+applypilot = "applypilot.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/applypilot"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit", "tests/integration"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:Using `httpx` with `starlette.testclient`"]
+markers = [
+  "firefox: end-to-end test that drives a real headless Firefox (skipped when Firefox is unavailable)",
+  "network: test that needs internet access (skipped unless APPLYPILOT_NETWORK_TESTS=1)",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+extend-exclude = ["src/jobpilot", "tests/test_db.py", "tests/test_state.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+ignore = ["E501", "SIM105", "SIM108", "ASYNC109", "ASYNC110", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = false
+files = ["src/applypilot"]
+plugins = ["pydantic.mypy"]

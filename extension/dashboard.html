@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Application Copilot</title><link rel="stylesheet" href="ui.css"></head>
+<body><main>
+<header><div><p class="eyebrow">LOCAL APPLICATION WORKSPACE</p><h1>Application Copilot</h1><p class="muted">Parallel workers. Every answer accounted for.</p></div><a class="button secondary" href="options.html">Connection settings</a></header>
+<section class="statusbar"><div><span id="indicator" class="indicator"></span><strong id="autopilot">Loading status…</strong><span id="connection" class="muted"></span></div><div class="controls"><label class="sr-only" for="mode">Queue mode</label><select id="mode"><option value="backlog">Backlog</option><option value="new">New jobs</option></select><button data-control="pause" class="secondary">Pause all</button><button data-control="resume">Resume</button><button data-control="stop" class="danger">Stop</button></div></section>
+<p id="notice" role="status" class="notice" hidden></p>
+<section id="counts" class="counts" aria-label="Application counts"></section>
+<section><div class="section-title"><h2>Workers</h2><span class="muted" id="worker-count"></span></div><div id="workers" class="workers"></div></section>
+<div class="workspace"><section class="applications"><div class="section-title"><h2>Applications</h2><label><span class="sr-only">Filter applications</span><input id="filter" type="search" placeholder="Company, role, or status"></label></div><div class="table-scroll"><table><thead><tr><th>Company / role</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="applications"></tbody></table></div></section>
+<section id="details" class="details"><h2>Application record</h2><p class="muted">Choose an application to see its timeline, exact questions and answers, sources, research, and submission evidence.</p></section></div>
+<footer><span id="last-updated">Waiting for backend</span><span>CAPTCHAs stay in your browser for manual completion.</span></footer>
+</main><script src="ui.js"></script></body></html>

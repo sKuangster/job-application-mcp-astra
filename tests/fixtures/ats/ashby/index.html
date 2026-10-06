@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robotics Perception Engineer @ Fixture Robotics</title>
+<style>
+  body { font-family: Inter, -apple-system, "Segoe UI", Arial, sans-serif; margin: 0; background: #fafafa; color: #1d1d1f; }
+  [data-fixture-banner] { background:#fff3cd; color:#664d03; border:2px solid #ffcd39; padding:6px 10px; font:bold 14px sans-serif; text-align:center; }
+  ._container_abc12 { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  ._navLogo_k3j1 { font-weight: 700; font-size: 18px; margin-bottom: 20px; }
+  .ashby-job-posting-heading { font-size: 30px; margin: 0 0 6px; }
+  ._jobMeta_q9x2 { color: #6b6b70; margin-bottom: 20px; }
+  ._tabs_m2k8 { display: flex; gap: 4px; border-bottom: 1px solid #e3e3e8; margin-bottom: 24px; }
+  ._tab_m2k8 { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 15px; cursor: pointer; color: #6b6b70; }
+  ._tab_m2k8[aria-selected=true] { color: #4a3aff; border-bottom-color: #4a3aff; font-weight: 600; }
+  ._button_x7y8 { background: #4a3aff; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 15px; cursor: pointer; }
+  ._button_x7y8[disabled] { opacity: .6; }
+  ._secondary_x7y8 { background: #fff; color: #4a3aff; border: 1px solid #4a3aff; }
+  ._fieldEntry_xyz { margin: 0 0 22px; display: flex; flex-direction: column; }
+  ._heading_xyz { font-weight: 600; font-size: 15px; margin-bottom: 6px; display: block; }
+  ._required_xyz { color: #d0312d; margin-left: 2px; }
+  ._input_xyz, ._textarea_xyz { padding: 9px 10px; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 15px; font-family: inherit; }
+  ._textarea_xyz { min-height: 120px; }
+  .ashby-application-form-question-description { margin: 0 0 6px; color: #6b6b70; font-size: 13px; }
+  ._container_xyz.ashby-application-form-file-upload { border: 1px dashed #b7b7c0; border-radius: 10px; padding: 18px; text-align: center; background: #fff; }
+  ._container_xyz._dragging_xyz { background: #efedff; border-color: #4a3aff; }
+  ._fileName_xyz { margin-top: 8px; font-size: 14px; }
+  .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; opacity: 0; }
+  ._yesno_xyz { display: flex; gap: 0; }
+  ._option_xyz { flex: 0 0 auto; min-width: 90px; padding: 9px 16px; border: 1px solid #d1d1d6; background: #fff; cursor: pointer; font-size: 15px; }
+  ._option_xyz:first-child { border-radius: 8px 0 0 8px; }
+  ._option_xyz:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+  ._option_xyz._active_xyz { background: #4a3aff; color: #fff; border-color: #4a3aff; }
+  ._autocomplete_xyz { position: relative; display: flex; flex-direction: column; }
+  ._listbox_xyz { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #d1d1d6; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.1); z-index: 5; max-height: 220px; overflow: auto; }
+  ._result_xyz { padding: 9px 12px; cursor: pointer; }
+  ._result_xyz:hover { background: #efedff; }
+  ._error_xyz { color: #d0312d; font-size: 13px; margin: 6px 0 0; }
+  [aria-invalid=true] { border-color: #d0312d !important; }
+  ._success_xyz h2 { color: #1f7a3a; }
+</style>
+<script src="../kit.js"></script>
+</head>
+<body>
+<div data-fixture-banner role="note">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<div id="root" data-fixture-root>
+  <div class="_container_abc12 ashby-job-posting-container">
+    <div class="_navLogo_k3j1">Fixture Robotics</div>
+    <h1 class="_title_ud4nd ashby-job-posting-heading">Robotics Perception Engineer</h1>
+    <div class="_jobMeta_q9x2"><span>Fixture Robotics</span> · <span>Pittsburgh, PA (Hybrid)</span> · <span>Full time</span></div>
+
+    <div class="_tabs_m2k8" role="tablist">
+      <button type="button" role="tab" class="_tab_m2k8" id="job-overview-tab" aria-controls="overview" aria-selected="true">Overview</button>
+      <button type="button" role="tab" class="_tab_m2k8" id="job-application-tab" aria-controls="form" aria-selected="false">Application</button>
+    </div>
+
+    <div id="overview" role="tabpanel" aria-labelledby="job-overview-tab" class="_descriptionText_oj0x8 ashby-job-posting-overview">
+      <p>Fixture Robotics builds autonomous mobile manipulators for warehouses and research labs. Our perception team turns raw camera, depth and lidar data into the 3D understanding our robots use to pick, place and navigate safely.</p>
+      <h3>You will</h3>
+      <ul>
+        <li>Develop object detection, 6-DoF pose estimation and scene segmentation models that run on-robot.</li>
+        <li>Build sensor calibration and multi-sensor fusion pipelines.</li>
+        <li>Own data collection, labeling and evaluation tooling for perception.</li>
+      </ul>
+      <h3>You have</h3>
+      <ul>
+        <li>3+ years building perception systems for robots or autonomous vehicles.</li>
+        <li>Strong Python and C++, experience with PyTorch and OpenCV.</li>
+        <li>Solid grounding in multi-view geometry.</li>
+      </ul>
+      <p><button type="button" class="_button_x7y8" id="apply-button">Apply for this Job</button></p>
+    </div>
+
+    <div id="form" role="tabpanel" aria-labelledby="job-application-tab" hidden>
+      <div class="_applicationForm_abc ashby-application-form-container" id="application-form-container">
+        <form id="ashby-form" novalidate>
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="_systemfield_name">
+            <label class="_heading_xyz ashby-application-form-question-title" for="_systemfield_name">Name<span class="_required_xyz">*</span></label>
+            <input class="_input_xyz" type="text" id="_systemfield_name" name="_systemfield_name" required placeholder="Type here..." autocomplete="name">
+          </div>
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="_systemfield_email">
+            <label class="_heading_xyz ashby-application-form-question-title" for="_systemfield_email">Email<span class="_required_xyz">*</span></label>
+            <input class="_input_xyz" type="email" id="_systemfield_email" name="_systemfield_email" required placeholder="hello@example.com..." autocomplete="email">
+          </div>
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="_systemfield_phone">
+            <label class="_heading_xyz ashby-application-form-question-title" for="_systemfield_phone">Phone</label>
+            <input class="_input_xyz" type="tel" id="_systemfield_phone" name="_systemfield_phone" placeholder="Type here..." autocomplete="tel">
+          </div>
+
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="_systemfield_resume">
+            <label class="_heading_xyz ashby-application-form-question-title" for="_systemfield_resume">Resume<span class="_required_xyz">*</span></label>
+            <div class="_container_xyz ashby-application-form-file-upload" id="resume-dropzone" role="group" aria-label="Resume upload">
+              <input type="file" id="_systemfield_resume" name="_systemfield_resume" class="visually-hidden" required accept=".pdf,.doc,.docx,.odt,.rtf,.txt">
+              <div class="_instructions_xyz">Upload File or drag and drop here</div>
+              <p style="margin:10px 0 0"><button type="button" class="_button_x7y8 _secondary_x7y8" id="resume-upload-button">Upload File</button></p>
+              <div class="_fileName_xyz" id="resume-file-name" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="_systemfield_location">
+            <label class="_heading_xyz ashby-application-form-question-title" for="_systemfield_location" id="_systemfield_location-label">Location<span class="_required_xyz">*</span></label>
+            <div class="_autocomplete_xyz">
+              <input class="_input_xyz" type="text" id="_systemfield_location" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" aria-controls="_systemfield_location-listbox" aria-required="true" autocomplete="off" placeholder="Start typing...">
+              <div class="_listbox_xyz" role="listbox" id="_systemfield_location-listbox" aria-labelledby="_systemfield_location-label" hidden></div>
+            </div>
+          </div>
+
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="sponsorship" id="field-sponsorship">
+            <label class="_heading_xyz ashby-application-form-question-title" id="sponsorship-label">Will you require visa sponsorship?<span class="_required_xyz">*</span></label>
+            <div class="_yesno_xyz" role="group" aria-labelledby="sponsorship-label" aria-required="true" data-yesno="sponsorship">
+              <button type="button" class="_option_xyz" aria-pressed="false">Yes</button>
+              <button type="button" class="_option_xyz" aria-pressed="false">No</button>
+            </div>
+          </div>
+
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="hybrid" id="field-hybrid">
+            <label class="_heading_xyz ashby-application-form-question-title" id="hybrid-label">Are you comfortable working in a hybrid environment (3 days per week in office)?<span class="_required_xyz">*</span></label>
+            <div class="_yesno_xyz" role="group" aria-labelledby="hybrid-label" aria-required="true" data-yesno="hybrid">
+              <button type="button" class="_option_xyz" aria-pressed="false">Yes</button>
+              <button type="button" class="_option_xyz" aria-pressed="false">No</button>
+            </div>
+          </div>
+
+          <div class="_fieldEntry_xyz ashby-application-form-field-entry" data-field-path="robotics_project">
+            <label class="_heading_xyz ashby-application-form-question-title" for="robotics_project">Tell us about a robotics project you are proud of.<span class="_required_xyz">*</span></label>
+            <p class="ashby-application-form-question-description">Please keep your answer under 300 words.</p>
+            <textarea class="_textarea_xyz" id="robotics_project" name="robotics_project" required placeholder="Type here..."></textarea>
+          </div>
+
+          <button type="submit" class="_button_x7y8 ashby-application-form-submit-button" id="submit-application">Submit Application</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var LOCATIONS = [
+    "Pittsburgh, Pennsylvania, United States",
+    "Philadelphia, Pennsylvania, United States",
+    "San Francisco, California, United States",
+    "San Jose, California, United States",
+    "New York, New York, United States",
+    "Seattle, Washington, United States",
+    "Austin, Texas, United States",
+    "Boston, Massachusetts, United States",
+    "Toronto, Ontario, Canada",
+    "London, England, United Kingdom"
+  ];
+  var form = document.getElementById("ashby-form");
+  var overviewTab = document.getElementById("job-overview-tab");
+  var appTab = document.getElementById("job-application-tab");
+  var overview = document.getElementById("overview");
+  var formPanel = document.getElementById("form");
+
+  function showTab(which) {
+    var app = which === "application";
+    overview.hidden = app;
+    formPanel.hidden = !app;
+    overviewTab.setAttribute("aria-selected", app ? "false" : "true");
+    appTab.setAttribute("aria-selected", app ? "true" : "false");
+  }
+  overviewTab.addEventListener("click", function () { showTab("overview"); });
+  appTab.addEventListener("click", function () { showTab("application"); });
+  document.getElementById("apply-button").addEventListener("click", function () { showTab("application"); });
+
+  // ---- errors ----
+  function entryOf(el) { return el.closest(".ashby-application-form-field-entry"); }
+  function setError(entry, msg, ctrl) {
+    var node = entry.querySelector(".ashby-application-form-field-error");
+    var id = (entry.getAttribute("data-field-path") || "field") + "-error";
+    if (!node) {
+      node = document.createElement("p");
+      node.className = "_error_xyz ashby-application-form-field-error";
+      node.setAttribute("role", "alert");
+      node.id = id;
+      entry.appendChild(node);
+    }
+    node.textContent = msg;
+    if (ctrl) { ctrl.setAttribute("aria-invalid", "true"); ctrl.setAttribute("aria-describedby", id); }
+  }
+  function clearError(entry) {
+    var node = entry.querySelector(".ashby-application-form-field-error");
+    if (node) node.remove();
+    Array.prototype.forEach.call(entry.querySelectorAll("[aria-invalid]"), function (n) { n.removeAttribute("aria-invalid"); n.removeAttribute("aria-describedby"); });
+  }
+
+  // ---- resume dropzone ----
+  var resume = document.getElementById("_systemfield_resume");
+  var dropzone = document.getElementById("resume-dropzone");
+  var fileNameEl = document.getElementById("resume-file-name");
+  var droppedFiles = null;
+  function currentFiles() {
+    if (resume.files && resume.files.length) return Array.prototype.slice.call(resume.files);
+    return droppedFiles ? Array.prototype.slice.call(droppedFiles) : [];
+  }
+  function showFile() {
+    var files = currentFiles();
+    fileNameEl.textContent = files.length ? files[0].name : "";
+    if (files.length) clearError(entryOf(dropzone));
+  }
+  document.getElementById("resume-upload-button").addEventListener("click", function () { resume.click(); });
+  resume.addEventListener("change", function () { droppedFiles = null; showFile(); });
+  ["dragenter", "dragover"].forEach(function (t) {
+    dropzone.addEventListener(t, function (e) { e.preventDefault(); dropzone.classList.add("_dragging_xyz"); });
+  });
+  dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("_dragging_xyz"); });
+  dropzone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    dropzone.classList.remove("_dragging_xyz");
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    droppedFiles = files;
+    try { resume.files = files; } catch (err) { /* keep droppedFiles */ }
+    showFile();
+  });
+
+  // ---- location autocomplete ----
+  var loc = document.getElementById("_systemfield_location");
+  var listbox = document.getElementById("_systemfield_location-listbox");
+  var selectedLocation = "";
+  var locTimer = null;
+  function closeList() { listbox.hidden = true; loc.setAttribute("aria-expanded", "false"); }
+  function renderList(items) {
+    listbox.innerHTML = "";
+    items.forEach(function (t, i) {
+      var o = document.createElement("div");
+      o.setAttribute("role", "option");
+      o.className = "_result_xyz";
+      o.id = "_systemfield_location-option-" + i;
+      o.setAttribute("aria-selected", "false");
+      o.textContent = t;
+      listbox.appendChild(o);
+    });
+    if (items.length) { listbox.hidden = false; loc.setAttribute("aria-expanded", "true"); } else closeList();
+  }
+  loc.addEventListener("input", function () {
+    selectedLocation = "";
+    loc.removeAttribute("data-selected");
+    if (locTimer) clearTimeout(locTimer);
+    var q = loc.value.trim().toLowerCase();
+    if (!q) { closeList(); return; }
+    locTimer = setTimeout(function () {
+      locTimer = null;
+      renderList(LOCATIONS.filter(function (l) { return l.toLowerCase().indexOf(q) >= 0; }));
+    }, 250);
+  });
+  function pickLocation(e) {
+    var o = e.target.closest && e.target.closest("[role=option]");
+    if (!o) return;
+    e.preventDefault();
+    selectedLocation = o.textContent;
+    loc.value = selectedLocation;
+    loc.setAttribute("data-selected", selectedLocation);
+    closeList();
+    clearError(entryOf(loc));
+  }
+  listbox.addEventListener("mousedown", pickLocation);
+  listbox.addEventListener("click", pickLocation);
+  loc.addEventListener("keydown", function (e) { if (e.key === "Escape") closeList(); });
+
+  // ---- yes/no ----
+  var yesno = {};
+  Array.prototype.forEach.call(document.querySelectorAll("[data-yesno]"), function (group) {
+    var key = group.getAttribute("data-yesno");
+    yesno[key] = "";
+    Array.prototype.forEach.call(group.querySelectorAll("button"), function (btn) {
+      btn.addEventListener("click", function () {
+        Array.prototype.forEach.call(group.querySelectorAll("button"), function (b) {
+          b.classList.remove("_active_xyz");
+          b.setAttribute("aria-pressed", "false");
+        });
+        btn.classList.add("_active_xyz");
+        btn.setAttribute("aria-pressed", "true");
+        yesno[key] = btn.textContent.trim();
+        group.setAttribute("data-value", yesno[key]);
+        clearError(entryOf(group));
+      });
+    });
+  });
+
+  form.addEventListener("input", function (e) {
+    if (e.target === loc) return;
+    if (e.target.getAttribute("aria-invalid") === "true" && String(e.target.value || "").trim()) clearError(entryOf(e.target));
+  });
+
+  function wordCount(s) { return String(s || "").trim().split(/\s+/).filter(Boolean).length; }
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    var bad = 0;
+    var REQ = "This field is required.";
+    ["_systemfield_name", "_systemfield_email", "robotics_project"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el.value.trim()) { setError(entryOf(el), REQ, el); bad++; } else clearError(entryOf(el));
+    });
+    var email = document.getElementById("_systemfield_email");
+    if (email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) { setError(entryOf(email), "Please enter a valid email address.", email); bad++; }
+    var project = document.getElementById("robotics_project");
+    if (project.value.trim() && wordCount(project.value) > 300) { setError(entryOf(project), "Please keep your answer under 300 words.", project); bad++; }
+    if (!currentFiles().length) { setError(entryOf(dropzone), REQ, resume); bad++; }
+    if (!selectedLocation) { setError(entryOf(loc), REQ, loc); bad++; }
+    Object.keys(yesno).forEach(function (k) {
+      var g = document.querySelector('[data-yesno="' + k + '"]');
+      if (!yesno[k]) { setError(entryOf(g), REQ, g); bad++; }
+    });
+    if (bad) {
+      var first = form.querySelector("[aria-invalid=true]");
+      try { if (first) first.focus(); } catch (err) {}
+      return;
+    }
+    submitted = true;
+    document.getElementById("submit-application").disabled = true;
+    var data = FixtureKit.collect(form);
+    delete data["_systemfield_location"];
+    data._systemfield_resume = currentFiles().map(function (f) { return f.name; });
+    data.location = selectedLocation;
+    data.sponsorship = yesno.sponsorship;
+    data.hybrid = yesno.hybrid;
+    FixtureKit.submit("ashby", data, {
+      confirm: function () {
+        document.getElementById("application-form-container").innerHTML =
+          '<div class="_success_xyz ashby-application-form-success-container">' +
+          '<h2>Your application was successfully submitted</h2>' +
+          '<p>We\'ll contact you if there are next steps.</p>' +
+          '</div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

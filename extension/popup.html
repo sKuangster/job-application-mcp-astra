@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Application Copilot</title><link rel="stylesheet" href="ui.css"></head><body class="popup"><main>
+<header><div><p class="eyebrow">APPLICATION COPILOT</p><h1 id="autopilot">Loading…</h1><p id="connection" class="muted"></p></div><span id="indicator" class="indicator"></span></header>
+<p id="notice" role="status" class="notice" hidden></p><section id="counts" class="counts"></section>
+<div class="controls"><select id="mode" aria-label="Queue mode"><option value="backlog">Backlog</option><option value="new">New jobs</option></select><button data-control="pause" class="secondary">Pause all</button><button data-control="resume">Resume</button><button data-control="stop" class="danger">Stop</button></div>
+<section><div class="section-title"><h2>Workers</h2><span id="worker-count" class="muted"></span></div><div id="workers" class="workers"></div></section>
+<div class="controls"><button id="open-dashboard">Open dashboard</button><a class="button secondary" href="options.html" target="_blank">Settings</a></div><footer id="last-updated"></footer>
+</main><script src="ui.js"></script></body></html>

@@ -1,0 +1,56 @@
+{
+  "manifest_version": 2,
+  "name": "ApplyPilot",
+  "version": "1.0.0",
+  "description": "Local browser bridge for the ApplyPilot job-application assistant. Talks only to your own backend on 127.0.0.1.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "applypilot@local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "webNavigation",
+    "notifications",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background/bridge-core.js", "background/background.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "ApplyPilot",
+    "default_popup": "ui/popup.html",
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    }
+  },
+  "options_ui": {
+    "page": "ui/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "exclude_matches": [
+        "*://*.google.com/recaptcha/*",
+        "*://www.recaptcha.net/*",
+        "*://*.hcaptcha.com/*",
+        "*://challenges.cloudflare.com/*",
+        "*://*.arkoselabs.com/*",
+        "*://*.funcaptcha.com/*"
+      ],
+      "js": ["content/adapters.js", "content/dom-engine.js", "content/content.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_idle"
+    }
+  ]
+}

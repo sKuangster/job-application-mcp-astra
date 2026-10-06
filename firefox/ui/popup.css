@@ -1,0 +1,10 @@
+body.popup { width: 380px; min-height: 120px; padding: 10px 12px 12px; }
+.p-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.control-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.control-header .control { font-size: 13px; }
+.p-message { font-size: 12px; color: var(--muted); min-height: 0; }
+.p-message:not(:empty) { margin-top: 6px; }
+.p-message.error { color: var(--danger); }
+.counters { grid-template-columns: repeat(3, 1fr); }
+.queue-line { margin-bottom: 6px; }
+.attention { margin-top: 10px; }

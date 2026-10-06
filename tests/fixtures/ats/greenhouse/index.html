@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Application for Senior Robotics Software Engineer at Fixture Robotics</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #222; background: #fff; }
+  [data-fixture-banner] { background:#fff3cd; color:#664d03; border:2px solid #ffcd39; padding:6px 10px; font:bold 14px sans-serif; text-align:center; }
+  #grnhse_app { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  .job__header .company-name { color: #555; font-size: 15px; }
+  .job__title h1 { font-size: 28px; margin: 4px 0; }
+  .job__location { color: #666; margin-bottom: 16px; }
+  .btn { display: inline-block; background: #0c6b58; color: #fff; padding: 10px 18px; border: 0; border-radius: 4px; text-decoration: none; cursor: pointer; font-size: 15px; }
+  .btn--secondary { background: #fff; color: #0c6b58; border: 1px solid #0c6b58; }
+  .application--header h2 { border-top: 1px solid #ddd; padding-top: 24px; }
+  .field { margin: 0 0 18px; display: flex; flex-direction: column; }
+  .field label, .field .label { font-weight: bold; margin-bottom: 6px; font-size: 14px; }
+  .field input[type=text], .field input[type=email], .field input[type=tel], .field textarea, .field select { padding: 8px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; }
+  .field textarea { min-height: 110px; }
+  .asterisk { color: #b00020; }
+  .error { color: #b00020; font-size: 13px; margin-top: 4px; }
+  [aria-invalid=true] { border-color: #b00020 !important; }
+  .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; opacity: 0; }
+  .file-upload__filename { font-size: 13px; color: #333; margin-top: 6px; }
+  .select__container { position: relative; }
+  .select__control { display: flex; align-items: center; border: 1px solid #bbb; border-radius: 4px; padding: 0 6px; min-height: 36px; cursor: text; }
+  .select__value-container { flex: 1; position: relative; display: flex; align-items: center; }
+  .select__single-value { color: #222; position: absolute; left: 2px; pointer-events: none; }
+  .select__value-container input { border: 0; outline: 0; flex: 1; padding: 8px 2px; font-size: 14px; background: transparent; }
+  .select__indicators { color: #777; padding: 0 4px; }
+  .select__menu { position: absolute; left: 0; right: 0; top: 100%; z-index: 10; background: #fff; border: 1px solid #bbb; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,.12); max-height: 220px; overflow: auto; }
+  .select__option { padding: 8px 10px; cursor: pointer; }
+  .select__option:hover, .select__option--is-focused { background: #e6f2ef; }
+  .select__menu-notice { padding: 8px 10px; color: #777; }
+  .alert { background: #fdecea; border: 1px solid #f5c2c0; color: #8a1c1c; padding: 10px 12px; border-radius: 4px; margin-bottom: 18px; }
+  .eeoc__section { border-top: 1px solid #ddd; margin-top: 28px; padding-top: 8px; }
+  .eeoc__description { font-size: 13px; color: #555; }
+  .confirmation h1 { color: #0c6b58; }
+</style>
+<script src="../kit.js"></script>
+</head>
+<body>
+<div data-fixture-banner role="note">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<div id="grnhse_app" data-fixture-root>
+  <div class="job__header">
+    <div class="company-name">Fixture Robotics</div>
+    <div class="job__title"><h1 class="section-header section-header--large">Senior Robotics Software Engineer</h1></div>
+    <div class="job__location">Remote — US</div>
+    <a class="btn" href="#app" id="apply_button">Apply for this job</a>
+  </div>
+
+  <div class="job__description body" id="content">
+    <p>Fixture Robotics builds autonomous mobile manipulators for warehouses and labs. We are looking for a Senior Robotics Software Engineer to own core pieces of our motion planning and robot control stack.</p>
+    <h3>What you'll do</h3>
+    <ul>
+      <li>Design and ship real-time C++ and Python software running on our robot fleet.</li>
+      <li>Build motion planning, state estimation and perception integration in ROS 2.</li>
+      <li>Improve simulation and hardware-in-the-loop testing infrastructure.</li>
+    </ul>
+    <h3>What we're looking for</h3>
+    <ul>
+      <li>5+ years of professional software engineering experience, ideally in robotics.</li>
+      <li>Strong C++17 and Python; experience with ROS / ROS 2.</li>
+      <li>Comfort debugging on real hardware.</li>
+    </ul>
+    <p>Fixture Robotics is an equal opportunity employer.</p>
+  </div>
+
+  <div id="app" class="application">
+    <div class="application--header"><h2>Apply for this job</h2><p><span class="asterisk">*</span> indicates a required field</p></div>
+    <div id="form_container">
+    <div id="error_alert" class="alert" role="alert" hidden></div>
+    <form id="application_form" class="application--form" action="#" method="post" enctype="multipart/form-data" novalidate>
+      <div id="main_fields" class="application--questions">
+        <div class="field text-input-wrapper">
+          <label for="first_name" id="first_name-label">First Name<span class="asterisk">*</span></label>
+          <input type="text" id="first_name" name="first_name" autocomplete="given-name" aria-required="true" required>
+        </div>
+        <div class="field text-input-wrapper">
+          <label for="last_name" id="last_name-label">Last Name<span class="asterisk">*</span></label>
+          <input type="text" id="last_name" name="last_name" autocomplete="family-name" aria-required="true" required>
+        </div>
+        <div class="field text-input-wrapper">
+          <label for="email" id="email-label">Email<span class="asterisk">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="email" aria-required="true" required>
+        </div>
+        <div class="field text-input-wrapper">
+          <label for="phone" id="phone-label">Phone</label>
+          <input type="tel" id="phone" name="phone" autocomplete="tel">
+        </div>
+
+        <div class="field select__container" data-combobox="location" data-async="true">
+          <label id="candidate-location-label" for="candidate-location">Location (City)</label>
+          <div class="select__control">
+            <div class="select__value-container">
+              <div class="select__single-value"></div>
+              <input id="candidate-location" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="candidate-location-label" aria-controls="candidate-location-listbox" autocomplete="off" type="text">
+            </div>
+            <div class="select__indicators" aria-hidden="true">▾</div>
+          </div>
+          <div class="select__menu" role="listbox" id="candidate-location-listbox" hidden></div>
+          <input type="hidden" name="location" value="">
+        </div>
+
+        <div class="field file-upload" id="resume_field">
+          <div class="label upload-label" id="upload-label-resume">Resume/CV<span class="asterisk">*</span></div>
+          <label for="resume" class="visually-hidden">Resume/CV *</label>
+          <input type="file" id="resume" name="resume" class="visually-hidden" accept=".pdf,.doc,.docx,.txt,.rtf" aria-required="true" required aria-labelledby="upload-label-resume">
+          <div class="file-upload__wrapper">
+            <button type="button" class="btn btn--secondary" id="resume_attach" data-source="attach">Attach</button>
+          </div>
+          <div class="file-upload__filename" id="resume_filename" aria-live="polite"></div>
+        </div>
+
+        <div class="field text-input-wrapper">
+          <label for="question_linkedin" id="question_linkedin-label">LinkedIn Profile</label>
+          <input type="text" id="question_linkedin" name="linkedin_profile" autocomplete="off">
+        </div>
+        <div class="field text-input-wrapper">
+          <label for="question_website" id="question_website-label">Website</label>
+          <input type="text" id="question_website" name="website" autocomplete="off">
+        </div>
+
+        <div class="field select__container application-question custom-question" data-combobox="work_authorization">
+          <label id="question_auth-label" for="question_auth">Are you legally authorized to work in the United States?<span class="asterisk">*</span></label>
+          <div class="select__control">
+            <div class="select__value-container">
+              <div class="select__single-value"></div>
+              <input id="question_auth" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="question_auth-label" aria-controls="question_auth-listbox" aria-required="true" autocomplete="off" type="text">
+            </div>
+            <div class="select__indicators" aria-hidden="true">▾</div>
+          </div>
+          <div class="select__menu" role="listbox" id="question_auth-listbox" hidden>
+            <div role="option" class="select__option" id="question_auth-option-0" aria-selected="false">Yes</div>
+            <div role="option" class="select__option" id="question_auth-option-1" aria-selected="false">No</div>
+          </div>
+          <input type="hidden" name="work_authorization" value="">
+        </div>
+
+        <div class="field select__container application-question custom-question" data-combobox="sponsorship">
+          <label id="question_sponsor-label" for="question_sponsor">Will you now or in the future require sponsorship for employment visa status (e.g. H-1B visa status)?<span class="asterisk">*</span></label>
+          <div class="select__control">
+            <div class="select__value-container">
+              <div class="select__single-value"></div>
+              <input id="question_sponsor" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="question_sponsor-label" aria-controls="question_sponsor-listbox" aria-required="true" autocomplete="off" type="text">
+            </div>
+            <div class="select__indicators" aria-hidden="true">▾</div>
+          </div>
+          <div class="select__menu" role="listbox" id="question_sponsor-listbox" hidden>
+            <div role="option" class="select__option" id="question_sponsor-option-0" aria-selected="false">Yes</div>
+            <div role="option" class="select__option" id="question_sponsor-option-1" aria-selected="false">No</div>
+          </div>
+          <input type="hidden" name="sponsorship" value="">
+        </div>
+
+        <div class="field text-input-wrapper application-question custom-question">
+          <label for="question_hear" id="question_hear-label">How did you hear about this job?</label>
+          <input type="text" id="question_hear" name="heard_about" autocomplete="off">
+        </div>
+
+        <div class="field application-question custom-question">
+          <label for="question_why" id="question_why-label">Why do you want to work at Fixture Robotics?<span class="asterisk">*</span></label>
+          <textarea id="question_why" name="why_fixture_robotics" maxlength="1500" aria-required="true" required></textarea>
+        </div>
+      </div>
+
+      <div id="eeoc_fields" class="eeoc__section">
+        <h3 class="eeoc__title">Voluntary Self-Identification</h3>
+        <p class="eeoc__description">For government reporting purposes, we ask candidates to respond to the below self-identification survey. Completion of the form is entirely voluntary. Whatever your decision, it will not be considered in the hiring process or thereafter. Any information that you do provide will be recorded and maintained in a confidential file.</p>
+        <div class="field">
+          <label for="gender" id="gender-label">Gender</label>
+          <select id="gender" name="gender">
+            <option value="">Please select</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Decline To Self Identify">Decline To Self Identify</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="hispanic_ethnicity" id="hispanic_ethnicity-label">Are you Hispanic/Latino?</label>
+          <select id="hispanic_ethnicity" name="hispanic_ethnicity">
+            <option value="">Please select</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+            <option value="Decline To Self Identify">Decline To Self Identify</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="veteran_status" id="veteran_status-label">Veteran Status</label>
+          <select id="veteran_status" name="veteran_status">
+            <option value="">Please select</option>
+            <option value="I am not a protected veteran">I am not a protected veteran</option>
+            <option value="I identify as one or more of the classifications of protected veteran">I identify as one or more of the classifications of protected veteran</option>
+            <option value="I don't wish to answer">I don't wish to answer</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="disability_status" id="disability_status-label">Disability Status</label>
+          <select id="disability_status" name="disability_status">
+            <option value="">Please select</option>
+            <option value="Yes, I have a disability (or previously had a disability)">Yes, I have a disability (or previously had a disability)</option>
+            <option value="No, I do not have a disability and have not had one in the past">No, I do not have a disability and have not had one in the past</option>
+            <option value="I do not want to answer">I do not want to answer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="application--submit">
+        <button type="submit" class="btn btn--primary" id="submit_app">Submit Application</button>
+      </div>
+    </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var CITIES = [
+    "San Francisco, California, United States",
+    "San Jose, California, United States",
+    "San Diego, California, United States",
+    "Los Angeles, California, United States",
+    "New York, New York, United States",
+    "Seattle, Washington, United States",
+    "Austin, Texas, United States",
+    "Boston, Massachusetts, United States",
+    "Pittsburgh, Pennsylvania, United States",
+    "Remote"
+  ];
+  var form = document.getElementById("application_form");
+  var alertBox = document.getElementById("error_alert");
+
+  function errId(el) { return (el.id || el.name) + "-error"; }
+
+  function setError(el, container, msg) {
+    var id = errId(el);
+    var node = document.getElementById(id);
+    if (!node) {
+      node = document.createElement("div");
+      node.id = id;
+      node.className = "error helper-text--error";
+      node.setAttribute("role", "alert");
+      container.appendChild(node);
+    }
+    node.textContent = msg;
+    el.setAttribute("aria-invalid", "true");
+    var d = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+    if (d.indexOf(id) < 0) d.push(id);
+    el.setAttribute("aria-describedby", d.join(" "));
+  }
+
+  function clearError(el) {
+    var node = document.getElementById(errId(el));
+    if (node) node.remove();
+    el.removeAttribute("aria-invalid");
+    var d = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(function (x) { return x && x !== errId(el); });
+    if (d.length) el.setAttribute("aria-describedby", d.join(" ")); else el.removeAttribute("aria-describedby");
+  }
+
+  // ---- React-select-like comboboxes ----
+  function setupCombobox(container) {
+    var input = container.querySelector("input[role=combobox]");
+    var menu = container.querySelector(".select__menu");
+    var single = container.querySelector(".select__single-value");
+    var hidden = container.querySelector("input[type=hidden]");
+    var control = container.querySelector(".select__control");
+    var isAsync = container.getAttribute("data-async") === "true";
+    var staticOptions = Array.prototype.map.call(menu.querySelectorAll("[role=option]"), function (o) { return o.textContent; });
+    var timer = null;
+
+    function render(list, notice) {
+      menu.innerHTML = "";
+      if (notice) {
+        var n = document.createElement("div");
+        n.className = "select__menu-notice";
+        n.textContent = notice;
+        menu.appendChild(n);
+        return;
+      }
+      list.forEach(function (text, i) {
+        var opt = document.createElement("div");
+        opt.setAttribute("role", "option");
+        opt.className = "select__option";
+        opt.id = input.id + "-option-" + i;
+        opt.setAttribute("aria-selected", text === hidden.value ? "true" : "false");
+        opt.textContent = text;
+        menu.appendChild(opt);
+      });
+      if (!list.length) render(null, "No options");
+    }
+    function open() {
+      if (!menu.hidden) return;
+      menu.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+      if (!isAsync) render(filterStatic(input.value));
+      else if (!input.value || input.value.length < 2) render(null, "Type to search");
+    }
+    function close() {
+      menu.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+    function filterStatic(q) {
+      q = String(q || "").trim().toLowerCase();
+      return staticOptions.filter(function (t) { return !q || t.toLowerCase().indexOf(q) >= 0; });
+    }
+    function choose(text) {
+      hidden.value = text;
+      single.textContent = text;
+      container.setAttribute("data-value", text);
+      input.value = "";
+      close();
+      clearError(input);
+      refreshAlert();
+    }
+
+    control.addEventListener("click", function (e) { if (e.target !== input) input.focus(); open(); });
+    input.addEventListener("focus", open);
+    input.addEventListener("click", open);
+    input.addEventListener("input", function () {
+      menu.hidden = true; open();
+      single.textContent = input.value ? "" : hidden.value;
+      var q = input.value;
+      if (!isAsync) { render(filterStatic(q)); return; }
+      if (timer) clearTimeout(timer);
+      if (q.trim().length < 2) { render(null, "Type to search"); return; }
+      render(null, "Loading...");
+      timer = setTimeout(function () {
+        timer = null;
+        var ql = q.trim().toLowerCase();
+        render(CITIES.filter(function (c) { return c.toLowerCase().indexOf(ql) >= 0; }));
+      }, 300);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") close();
+      if (e.key === "Enter") {
+        var first = menu.querySelector("[role=option]");
+        if (!menu.hidden && first) { e.preventDefault(); choose(first.textContent); }
+      }
+    });
+    input.addEventListener("blur", function () {
+      setTimeout(function () { if (document.activeElement !== input) { input.value = ""; single.textContent = hidden.value; close(); } }, 150);
+    });
+    function pick(e) {
+      var opt = e.target.closest && e.target.closest("[role=option]");
+      if (!opt) return;
+      e.preventDefault();
+      choose(opt.textContent);
+    }
+    menu.addEventListener("mousedown", pick);
+    menu.addEventListener("click", pick);
+    return { input: input, hidden: hidden, container: container };
+  }
+  var combos = Array.prototype.map.call(document.querySelectorAll("[data-combobox]"), setupCombobox);
+
+  // ---- resume upload ----
+  var resume = document.getElementById("resume");
+  var resumeName = document.getElementById("resume_filename");
+  document.getElementById("resume_attach").addEventListener("click", function () { resume.click(); });
+  resume.addEventListener("change", function () {
+    var f = resume.files && resume.files[0];
+    resumeName.textContent = f ? f.name : "";
+    if (f) { clearError(resume); refreshAlert(); }
+  });
+
+  form.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.getAttribute && t.getAttribute("aria-invalid") === "true" && t.getAttribute("role") !== "combobox" && String(t.value || "").trim()) { clearError(t); refreshAlert(); }
+  });
+  form.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.getAttribute && t.getAttribute("aria-invalid") === "true" && t.type !== "file" && String(t.value || "").trim()) { clearError(t); refreshAlert(); }
+  });
+
+  function refreshAlert() {
+    if (alertBox.hidden) return;
+    if (!form.querySelector("[aria-invalid=true]")) alertBox.hidden = true;
+  }
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    var invalid = [];
+    // native required controls
+    Array.prototype.forEach.call(form.querySelectorAll("input[required], textarea[required], select[required]"), function (el) {
+      var empty = el.type === "file" ? !(el.files && el.files.length) : !String(el.value || "").trim();
+      if (empty) { setError(el, el.closest(".field"), "This field is required."); invalid.push(el); }
+      else clearError(el);
+    });
+    var email = document.getElementById("email");
+    if (email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+      setError(email, email.closest(".field"), "Please enter a valid email address."); invalid.push(email);
+    }
+    combos.forEach(function (c) {
+      if (c.input.getAttribute("aria-required") !== "true") return;
+      if (!c.hidden.value) { setError(c.input, c.container, "This field is required."); invalid.push(c.input); }
+      else clearError(c.input);
+    });
+    if (invalid.length) {
+      alertBox.textContent = "Please complete the required fields below. (" + invalid.length + " field" + (invalid.length > 1 ? "s" : "") + " missing or invalid)";
+      alertBox.hidden = false;
+      try { invalid[0].focus(); } catch (err) {}
+      return;
+    }
+    alertBox.hidden = true;
+    submitted = true;
+    document.getElementById("submit_app").disabled = true;
+    var data = FixtureKit.collect(form);
+    combos.forEach(function (c) { data[c.hidden.name] = c.hidden.value; });
+    // drop the raw combobox text inputs (they are cleared after selection)
+    delete data["candidate-location"]; delete data["question_auth"]; delete data["question_sponsor"];
+    FixtureKit.submit("greenhouse", data, {
+      confirm: function () {
+        document.getElementById("form_container").innerHTML =
+          '<div class="confirmation" id="application_confirmation">' +
+          '<h1 class="section-header">Thank you for applying.</h1>' +
+          '<h2>Your application has been received</h2>' +
+          '<p>Your application to Fixture Robotics for Senior Robotics Software Engineer has been received. We will review it and be in touch if your experience is a match.</p>' +
+          '</div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

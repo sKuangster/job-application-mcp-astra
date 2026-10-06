@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check your email - Fixture Talent Network</title>
+<style>
+  body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #1b1b1b; background: #f4f6f8; }
+  main { max-width: 520px; margin: 48px auto; background: #fff; padding: 32px; border: 1px solid #dde2e7; border-radius: 8px; text-align: center; }
+  .btn-link { background: none; border: 1px solid #2f6fdb; color: #2f6fdb; border-radius: 4px; padding: 8px 18px; cursor: pointer; }
+  .note { color: #555; font-size: 13px; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<main id="app" data-fixture-root>
+  <p><strong>Fixture Talent Network</strong></p>
+  <h1>Check your email</h1>
+  <p>Check your email for a verification link. Click the link to activate your account.</p>
+  <p class="note" id="resend-status" aria-live="polite"></p>
+  <button type="button" class="btn-link" id="resend-btn">Resend email</button>
+</main>
+<script src="../kit.js"></script>
+<script>
+  document.getElementById("resend-btn").addEventListener("click", function () {
+    document.getElementById("resend-status").textContent = "We sent another verification email.";
+  });
+</script>
+</body>
+</html>

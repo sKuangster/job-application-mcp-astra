@@ -1,0 +1,13 @@
+{
+  "manifest_version": 2,
+  "name": "Application Copilot — Local Bridge",
+  "version": "0.1.0",
+  "description": "Owned Firefox application tabs, local automation bridge, and an auditable parallel application dashboard.",
+  "browser_specific_settings": {"gecko": {"id": "application-copilot@local.invalid", "strict_min_version": "115.0"}},
+  "permissions": ["storage", "tabs", "webNavigation", "<all_urls>"],
+  "background": {"scripts": ["ownership.js", "background.js"], "persistent": true},
+  "browser_action": {"default_title": "Application Copilot", "default_popup": "popup.html"},
+  "options_ui": {"page": "options.html", "open_in_tab": true},
+  "content_scripts": [{"matches": ["http://*/*", "https://*/*"], "js": ["adapters.js", "dom-engine.js", "content.js"], "run_at": "document_idle", "all_frames": true, "match_about_blank": true}],
+  "content_security_policy": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*"
+}

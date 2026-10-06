@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ApplyPilot dashboard</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dashboard">
+  <a class="skip-link" href="#view">Skip to content</a>
+  <div class="layout">
+    <nav class="sidenav" aria-label="Main">
+      <div class="brand">ApplyPilot</div>
+      <ul>
+        <li><a href="#/overview" data-route="overview">Overview</a></li>
+        <li><a href="#/applications" data-route="applications">Applications</a></li>
+        <li><a href="#/attention" data-route="attention">Needs attention <span id="nav-attention" class="nav-count hidden"></span></a></li>
+        <li><a href="#/logs" data-route="logs">Logs</a></li>
+        <li><a href="#/settings" data-route="settings">Settings</a></li>
+      </ul>
+      <div id="nav-version" class="small muted nav-foot"></div>
+    </nav>
+    <div class="content">
+      <header class="topbar">
+        <div id="top-status" aria-live="polite"><span class="control control-STOPPED">AUTOPILOT: …</span></div>
+        <div id="top-controls"></div>
+      </header>
+      <div id="global-error"></div>
+      <div id="top-message" class="top-message" role="status" aria-live="polite"></div>
+      <main id="view" tabindex="-1"><div class="loading">Loading…</div></main>
+    </div>
+  </div>
+  <div id="live" class="sr-only" aria-live="polite"></div>
+  <script src="api.js"></script>
+  <script src="ui-common.js"></script>
+  <script src="widgets.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

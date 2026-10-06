@@ -1,0 +1,95 @@
+# =====================================================================================
+# settings.yaml — SYSTEM TUNING. Every value is validated at startup; unknown keys are errors.
+# Conservative defaults: raise concurrency only after watching a few applications succeed.
+# Local overrides: config/settings.local.yaml (git-ignored).
+# =====================================================================================
+
+automation:
+  # Submission. false = fill everything, validate, then STOP at the final page in
+  # READY_TO_SUBMIT for your approval (dashboard "Submit" / Astra application_action submit).
+  # true  = submit automatically once the validation gate passes.
+  auto_submit: false
+
+  # Concurrency (see README "Concurrency"). Each browser worker drives one Firefox window.
+  max_concurrent_applications: 2      # browser workers (1-16)
+  max_prep_workers: 3                 # HTTP-only workers: Simplify page, eligibility, resume choice
+  per_domain_concurrency: 1           # simultaneous applications per ATS tenant / company site
+  max_open_application_tabs: 4        # windows held open (incl. ones waiting for Astra or you)
+  max_concurrent_research_tasks: 2
+  max_concurrent_model_requests: 2    # only for reasoning.provider: openai
+
+  # Leases & retries
+  worker_lease_timeout: 180           # seconds a claim survives without heartbeat (crash recovery)
+  heartbeat_interval: 15
+  retry_limit: 3                      # whole-application retries on recoverable errors
+  page_retry_limit: 3                 # fill/validate attempts per page before asking you
+  max_pages_per_application: 30
+  backoff_base_seconds: 30            # exponential backoff with jitter: 30s, 60s, 120s ...
+  backoff_max_seconds: 1800
+  domain_failure_threshold: 3         # consecutive failures on one domain → cool it down
+  domain_cooldown_seconds: 900
+
+  poll_interval_seconds: 1800         # NEW JOBS mode: how often to re-read the repository
+  idle_poll_seconds: 2
+  captcha_auto_resume: true           # resume automatically once you have solved a CAPTCHA
+  captcha_check_interval: 20
+  stop_on_config_incomplete: true     # refuse to start while required facts are missing
+
+browser:
+  tab_strategy: window                # window (one window per application; most reliable) | tab
+  page_load_timeout: 45
+  ready_quiet_ms: 700                 # DOM must be quiet this long before reading a page
+  command_timeout: 30
+  upload_timeout: 60
+  screenshot_on_failure: true         # saved under data/artifacts/<application_id>/
+  close_tab_on: terminal              # terminal | submitted | never
+  bridge_wait_timeout: 30
+  focus_new_windows: false
+
+reasoning:
+  provider: mcp                       # mcp = Astra answers via MCP (default) | openai = unattended API | none
+  batch_max_items: 12                 # questions per Astra round-trip
+  batch_collect_seconds: 2.0          # wait briefly so one round-trip covers more questions
+  item_lease_seconds: 900
+  park_timeout_seconds: 172800        # unanswered for 2 days → ask the user instead
+  min_confidence: 0.5
+  openai:
+    model: gpt-5-mini
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    max_output_tokens: 4000
+    timeout: 120
+
+answers:
+  reuse_threshold: 0.93               # similarity to reuse a stored non-factual answer
+  catalog_option_threshold: 0.82      # fuzzy option matching for deterministic answers
+  max_memory_age_days: 365
+  reuse_generic_written: true         # reuse company-neutral essays (never company-specific prose)
+  cover_letter_when_optional: false
+
+eligibility:
+  unknown_fact_policy: apply          # apply (permissive) | needs_user when a hard rule needs an unknown fact
+  use_listing_metadata: true          # use Simplify's sponsorship/degree tags
+  review_with_astra: true             # ambiguous structural requirements go to Astra
+  use_default_rules: true
+
+research:
+  enabled: true
+  cache_ttl_seconds: 1209600          # 14 days; research is reused across jobs at the same company
+  max_pages: 3                        # official-site pages fetched per company
+  fetch_timeout: 15
+  max_bytes: 2000000
+
+logging:
+  level: INFO                         # DEBUG for verbose troubleshooting
+  verbose_browser: false              # log every DOM scan/command in the audit trail
+  file_max_bytes: 20000000
+  file_backups: 5
+
+ingestion:
+  listings_path: .github/scripts/listings.json
+  readme_path: README.md
+  terms: ["Summer 2027"]              # which listing terms to apply to
+  categories: []                      # e.g. ["Software", "AI/ML/Data"]; empty = all
+  fetch_timeout: 60
+  simplify_fetch: true                # read each Simplify job page over HTTP before opening Firefox

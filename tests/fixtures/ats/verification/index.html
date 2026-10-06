@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Create your candidate account - Fixture Talent Network</title>
+<style>
+  body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #1b1b1b; background: #f4f6f8; }
+  main { max-width: 520px; margin: 32px auto; background: #fff; padding: 28px 32px; border: 1px solid #dde2e7; border-radius: 8px; }
+  .brand { font-weight: bold; color: #2f6fdb; }
+  .field { margin: 14px 0; }
+  .field label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .field input { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; border: 1px solid #b8c0c8; border-radius: 4px; }
+  .field-error { color: #c62828; font-size: 13px; margin-top: 3px; }
+  .btn { background: #2f6fdb; color: #fff; border: 0; border-radius: 4px; padding: 10px 24px; font-size: 15px; cursor: pointer; }
+  .btn[disabled] { opacity: .6; }
+  .hint { color: #555; font-size: 13px; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<main id="app" data-fixture-root>
+  <p class="brand">Fixture Talent Network</p>
+
+  <section id="step-signup" data-step="signup">
+    <h1>Create your candidate account</h1>
+    <p class="hint">Create an account to apply for Operations Analyst at Fixture Talent Network (Chicago, IL). You can use it to track your application status.</p>
+    <form id="signup-form" method="post" action="#" novalidate>
+      <div class="field">
+        <label for="signup-email">Email *</label>
+        <input type="email" id="signup-email" name="email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="signup-password">Password *</label>
+        <input type="password" id="signup-password" name="password" required autocomplete="new-password" minlength="8">
+        <div class="hint">At least 8 characters.</div>
+      </div>
+      <div class="field">
+        <label for="signup-confirm-password">Confirm Password *</label>
+        <input type="password" id="signup-confirm-password" name="confirmPassword" required autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn" id="create-account-btn">Create Account</button>
+    </form>
+  </section>
+
+  <section id="step-verify" data-step="verify" hidden>
+    <h1>Verify your email</h1>
+    <p>We sent a 6-digit code to your email<span id="verify-email-target"></span></p>
+    <form id="verify-form" method="post" action="#" novalidate>
+      <div class="field">
+        <label for="verification-code">Verification code *</label>
+        <input type="text" id="verification-code" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+      </div>
+      <button type="submit" class="btn" id="verify-btn">Verify</button>
+    </form>
+  </section>
+
+  <section id="step-application" data-step="application" hidden>
+    <h1>Application</h1>
+    <p class="hint">Operations Analyst &middot; Chicago, IL</p>
+    <form id="application-form" method="post" action="#" novalidate>
+      <div class="field">
+        <label for="app-name">Full Name *</label>
+        <input type="text" id="app-name" name="name" required autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="app-email">Email *</label>
+        <input type="email" id="app-email" name="email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="app-resume">Resume *</label>
+        <input type="file" id="app-resume" name="resume" accept=".pdf,.doc,.docx" required>
+        <div class="hint" id="app-resume-name" aria-live="polite"></div>
+      </div>
+      <button type="submit" class="btn" id="app-submit-btn">Submit Application</button>
+    </form>
+  </section>
+</main>
+<script src="../kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.FixtureKit;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var VALID_CODE = "123456";
+  var signupEmail = "";
+  function $(id) { return document.getElementById(id); }
+  function show(step) {
+    ["signup", "verify", "application"].forEach(function (s) { $("step-" + s).hidden = s !== step; });
+  }
+
+  $("signup-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var form = this;
+    K.clearErrors(form);
+    var missing = K.requireFields(form);
+    var email = $("signup-email"), pw = $("signup-password"), cpw = $("signup-confirm-password");
+    if (String(email.value).trim() && !EMAIL_RE.test(String(email.value).trim())) {
+      K.fieldError(email, "Please enter a valid email address."); missing.push(email);
+    }
+    if (pw.value && pw.value.length < 8) {
+      K.fieldError(pw, "Password must be at least 8 characters."); missing.push(pw);
+    }
+    if (cpw.value && pw.value !== cpw.value) {
+      K.fieldError(cpw, "Passwords do not match"); missing.push(cpw);
+    }
+    if (missing.length) { try { missing[0].focus(); } catch (err) { /* ignore */ } return; }
+    signupEmail = String(email.value).trim();
+    $("verify-email-target").textContent = " (" + signupEmail + ")";
+    show("verify");
+  });
+
+  $("verify-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    K.clearErrors(this);
+    var code = $("verification-code");
+    var v = String(code.value || "").trim();
+    if (!v) { K.fieldError(code, "This field is required."); return; }
+    if (v !== VALID_CODE) { K.fieldError(code, "Invalid verification code."); return; }
+    $("app-email").value = signupEmail;
+    show("application");
+  });
+
+  $("app-resume").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    $("app-resume-name").textContent = f ? "Attached: " + f.name : "";
+  });
+
+  var submitted = false;
+  $("application-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    var form = this;
+    K.clearErrors(form);
+    var missing = K.requireFields(form);
+    var email = $("app-email");
+    if (String(email.value).trim() && !EMAIL_RE.test(String(email.value).trim())) {
+      K.fieldError(email, "Please enter a valid email address."); missing.push(email);
+    }
+    if (missing.length) return;
+    submitted = true;
+    $("app-submit-btn").disabled = true;
+    var files = $("app-resume").files || [];
+    K.submit("verification", {
+      name: String($("app-name").value).trim(),
+      email: String(email.value).trim(),
+      resume: Array.prototype.map.call(files, function (f) { return f.name; })
+    }, {
+      confirm: function () {
+        $("app").innerHTML = '<div class="confirmation"><h1>Thank you for applying.</h1><p>Your application to Fixture Talent Network has been received.</p></div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

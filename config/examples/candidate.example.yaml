@@ -1,0 +1,47 @@
+# FICTIONAL EXAMPLE — shows the expected format only. "Jordan Example" is not a real person.
+# Copy the fields you need into config/candidate.local.yaml with YOUR real facts.
+identity:
+  first_name: Jordan
+  last_name: Example
+  preferred_name: Jordy
+  email: jordan.example@example.com
+  phone: "+1 555 010 0100"
+address:
+  street: 100 Example Street
+  city: Pittsburgh
+  region: PA
+  postal_code: "15213"
+  country: United States
+links:
+  linkedin: https://www.linkedin.com/in/jordan-example
+  github: https://github.com/jordan-example
+education:
+  university: Example State University
+  degree_level: bachelor
+  degree: Bachelor of Science in Computer Science
+  major: Computer Science
+  minor: Mathematics
+  start_date: "2024-08-26"
+  graduation_date: "2028-05-13"
+  gpa: 3.65
+  gpa_scale: 4.0
+  currently_enrolled: true
+work_authorization:
+  US: {authorized: true, requires_sponsorship_now: false, requires_sponsorship_future: false, citizen: true, permanent_resident: false}
+eligibility:
+  citizenships: [US]
+  age_18_or_older: true
+  security_clearance: None
+  can_obtain_clearance: true
+experience:
+  current_employer: null
+  total_years: 0
+  employers:
+    - {company: Example Robotics Club, title: Software Lead, start: "2025-01", end: null}
+    - {company: Example Labs Inc, title: Software Engineering Intern, start: "2025-06", end: "2025-08"}
+  employment_history_complete: true
+  skills: [Python, C++, TypeScript, PyTorch, SQL]
+factual_answers:
+  - question: "Do you have any relatives employed by this company?"
+    company: "*"
+    value: false

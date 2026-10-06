@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>iCIMS Content - Patient Care Coordinator</title>
+<style>
+  body { margin: 0; padding: 12px; font-family: Arial, Helvetica, sans-serif; color: #222; background: #fff; }
+  .iCIMS_JobContent { max-width: 860px; }
+  .iCIMS_InfoMsg { color: #445; font-size: 14px; margin: 4px 0 14px; }
+  .iCIMS_TableRow { margin: 10px 0; }
+  .iCIMS_TableRow label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+  .iCIMS_TableRow input[type=text], .iCIMS_TableRow input[type=email], .iCIMS_TableRow input[type=tel], .iCIMS_TableRow select { width: 320px; padding: 6px; border: 1px solid #99a; }
+  .field-required { color: #c00; }
+  .iCIMS_Button, input[type=submit] { background: #0b4f6c; color: #fff; border: 0; padding: 9px 22px; font-size: 15px; cursor: pointer; }
+  .iCIMS_ErrorMessage { background: #fdecea; border: 1px solid #f5c2c0; color: #8a1c13; padding: 10px; margin: 10px 0; }
+  .field-error { color: #b00020; font-size: 13px; margin-top: 3px; }
+  [aria-invalid=true] { border-color: #b00020 !important; }
+  .iCIMS_SectionHeader { border-bottom: 2px solid #0b4f6c; padding-bottom: 4px; margin-top: 26px; }
+  .iCIMS_Instructions { font-size: 13px; color: #556; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<div class="iCIMS_JobContent" id="iCIMS_JobContent" data-fixture-root>
+  <div class="iCIMS_JobHeader">
+    <h2 class="iCIMS_Header">Patient Care Coordinator</h2>
+    <p class="iCIMS_JobHeaderData">Fixture Health &middot; Seattle, WA &middot; Full-Time</p>
+  </div>
+
+  <!-- Step 1: Login -->
+  <section id="icims-step-login" class="iCIMS_Step" data-step="login">
+    <div class="iCIMS_PageHeader">Login</div>
+    <h1>Please Enter Your Email Address</h1>
+    <p class="iCIMS_InfoMsg">Enter your email address</p>
+    <div id="login-errors" class="iCIMS_ErrorMessage" role="alert" hidden></div>
+    <form id="iCIMS_LoginForm" class="iCIMS_Forms" method="post" action="#" novalidate>
+      <div class="iCIMS_TableRow">
+        <label for="email">Email Address <span class="field-required">*</span></label>
+        <input type="email" id="email" name="email" required aria-required="true" autocomplete="email">
+      </div>
+      <div class="iCIMS_TableRow">
+        <input type="submit" value="Next" class="iCIMS_Button" id="enterEmailSubmitButton">
+      </div>
+    </form>
+  </section>
+
+  <!-- Step 2: Candidate Profile -->
+  <section id="icims-step-profile" class="iCIMS_Step" data-step="profile" hidden>
+    <div class="iCIMS_PageHeader">Candidate Profile</div>
+    <h1>Candidate Profile</h1>
+    <p class="iCIMS_Instructions">Fields marked with an asterisk (<span class="field-required">*</span>) are required.</p>
+    <div id="profile-errors" class="iCIMS_ErrorMessage" role="alert" hidden>Please correct the errors below.</div>
+    <form id="iCIMS_ProfileForm" class="iCIMS_Forms" method="post" action="#" novalidate>
+      <h3 class="iCIMS_SectionHeader">Personal Information</h3>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.FirstName">First Name <span class="field-required">*</span></label>
+        <input type="text" id="PersonProfileFields.FirstName" name="firstName" required aria-required="true" autocomplete="given-name">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.LastName">Last Name <span class="field-required">*</span></label>
+        <input type="text" id="PersonProfileFields.LastName" name="lastName" required aria-required="true" autocomplete="family-name">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.Email">Email</label>
+        <input type="email" id="PersonProfileFields.Email" name="email" readonly autocomplete="email">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.Phone">Phone Number <span class="field-required">*</span></label>
+        <input type="tel" id="PersonProfileFields.Phone" name="phone" required aria-required="true" autocomplete="tel">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.Address">Address <span class="field-required">*</span></label>
+        <input type="text" id="PersonProfileFields.Address" name="address" required aria-required="true" autocomplete="street-address">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.City">City <span class="field-required">*</span></label>
+        <input type="text" id="PersonProfileFields.City" name="city" required aria-required="true" autocomplete="address-level2">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.State">State/Province <span class="field-required">*</span></label>
+        <select id="PersonProfileFields.State" name="state" required aria-required="true">
+          <option value="">Please Select</option>
+          <option value="CA">California</option>
+          <option value="NY">New York</option>
+          <option value="TX">Texas</option>
+          <option value="WA">Washington</option>
+        </select>
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.Zip">Zip/Postal Code <span class="field-required">*</span></label>
+        <input type="text" id="PersonProfileFields.Zip" name="zip" required aria-required="true" autocomplete="postal-code">
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.Country">Country <span class="field-required">*</span></label>
+        <select id="PersonProfileFields.Country" name="country" required aria-required="true">
+          <option value="">Please Select</option>
+          <option value="US" selected>United States</option>
+          <option value="CA">Canada</option>
+        </select>
+      </div>
+
+      <h3 class="iCIMS_SectionHeader">Resume</h3>
+      <div class="iCIMS_TableRow">
+        <label for="PersonProfileFields.Resume">Resume <span class="field-required">*</span></label>
+        <input type="file" id="PersonProfileFields.Resume" name="resume" accept=".pdf,.doc,.docx,.txt,.rtf" required aria-required="true">
+        <div class="iCIMS_Instructions" id="resume-filename" aria-live="polite"></div>
+      </div>
+
+      <h3 class="iCIMS_SectionHeader">Application Questions</h3>
+      <div class="iCIMS_TableRow">
+        <label for="Question.AgeOver18">Are you at least 18 years of age? <span class="field-required">*</span></label>
+        <select id="Question.AgeOver18" name="ageOver18" required aria-required="true">
+          <option value="">Please Select</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="Question.Education">Highest level of education <span class="field-required">*</span></label>
+        <select id="Question.Education" name="education" required aria-required="true">
+          <option value="">Please Select</option>
+          <option value="High School">High School</option>
+          <option value="Associate's Degree">Associate's Degree</option>
+          <option value="Bachelor's Degree">Bachelor's Degree</option>
+          <option value="Master's Degree">Master's Degree</option>
+          <option value="Doctorate">Doctorate</option>
+        </select>
+      </div>
+
+      <h3 class="iCIMS_SectionHeader">Equal Employment Opportunity</h3>
+      <p class="iCIMS_Instructions">Fixture Health is an equal opportunity employer. Providing this information is voluntary and will not affect your application.</p>
+      <div class="iCIMS_TableRow">
+        <label for="EEO.Gender">Gender</label>
+        <select id="EEO.Gender" name="gender">
+          <option value="">Please Select</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Decline">I do not wish to self-identify</option>
+        </select>
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="EEO.Race">Race/Ethnicity</label>
+        <select id="EEO.Race" name="race">
+          <option value="">Please Select</option>
+          <option value="Asian">Asian</option>
+          <option value="Black or African American">Black or African American</option>
+          <option value="Hispanic or Latino">Hispanic or Latino</option>
+          <option value="White">White</option>
+          <option value="Two or More Races">Two or More Races</option>
+          <option value="Decline">I do not wish to self-identify</option>
+        </select>
+      </div>
+      <div class="iCIMS_TableRow">
+        <label for="EEO.Veteran">Veteran Status</label>
+        <select id="EEO.Veteran" name="veteran">
+          <option value="">Please Select</option>
+          <option value="Protected Veteran">I identify as one or more of the classifications of protected veteran</option>
+          <option value="Not a Protected Veteran">I am not a protected veteran</option>
+          <option value="Decline">I do not wish to self-identify</option>
+        </select>
+      </div>
+
+      <div class="iCIMS_TableRow">
+        <input type="submit" value="Submit Application" class="iCIMS_Button" id="profileSubmitButton">
+      </div>
+    </form>
+  </section>
+</div>
+<script src="../kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.FixtureKit;
+  var loginForm = document.getElementById("iCIMS_LoginForm");
+  var profileForm = document.getElementById("iCIMS_ProfileForm");
+  var loginErrors = document.getElementById("login-errors");
+  var profileErrors = document.getElementById("profile-errors");
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  loginForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    K.clearErrors(loginForm);
+    var email = document.getElementById("email");
+    var v = String(email.value || "").trim();
+    if (!EMAIL_RE.test(v)) {
+      loginErrors.textContent = "Please enter a valid email address.";
+      loginErrors.hidden = false;
+      K.fieldError(email, "Please enter a valid email address.");
+      return;
+    }
+    loginErrors.hidden = true;
+    document.getElementById("PersonProfileFields.Email").value = v;
+    document.getElementById("icims-step-login").hidden = true;
+    document.getElementById("icims-step-profile").hidden = false;
+  });
+
+  document.getElementById("PersonProfileFields.Resume").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    document.getElementById("resume-filename").textContent = f ? "Attached: " + f.name : "";
+    if (f) K.clearErrors(this.parentNode);
+  });
+
+  profileForm.addEventListener("input", function (e) {
+    if (e.target && e.target.getAttribute("aria-invalid") === "true" && String(e.target.value || "").trim()) {
+      var row = e.target.closest(".iCIMS_TableRow");
+      if (row) K.clearErrors(row);
+    }
+  });
+
+  var submitted = false;
+  profileForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    K.clearErrors(profileForm);
+    var missing = K.requireFields(profileForm);
+    var phone = document.getElementById("PersonProfileFields.Phone");
+    if (String(phone.value || "").trim() && String(phone.value).replace(/\D/g, "").length < 10) {
+      K.fieldError(phone, "Please enter a valid phone number.");
+      missing.push(phone);
+    }
+    if (missing.length) {
+      profileErrors.textContent = "Please correct the errors below.";
+      profileErrors.hidden = false;
+      try { missing[0].focus(); } catch (err) { /* ignore */ }
+      return;
+    }
+    profileErrors.hidden = true;
+    submitted = true;
+    document.getElementById("profileSubmitButton").disabled = true;
+    var data = K.collect(profileForm);
+    K.submit("icims", data, {
+      confirm: function () {
+        document.getElementById("iCIMS_JobContent").innerHTML =
+          '<div class="iCIMS_Confirmation"><h1>Thank you for your interest</h1>' +
+          '<p>Your application has been submitted successfully.</p></div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

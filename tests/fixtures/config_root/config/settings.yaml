@@ -1,0 +1,21 @@
+automation:
+  max_concurrent_applications: 2
+  max_prep_workers: 2
+  auto_submit: true
+  idle_poll_seconds: 0.2
+  heartbeat_interval: 2
+  worker_lease_timeout: 60
+  backoff_base_seconds: 1
+  captcha_check_interval: 2
+  domain_cooldown_seconds: 10
+browser:
+  page_load_timeout: 15
+  ready_quiet_ms: 150
+  command_timeout: 20
+  screenshot_on_failure: false
+ingestion:
+  simplify_fetch: false
+research:
+  enabled: false
+reasoning:
+  batch_collect_seconds: 0.2

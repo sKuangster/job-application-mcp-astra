@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Apply - Field Applications Engineer - Fixture Robotics</title>
+<style>
+  body { margin: 0; font-family: "Helvetica Neue", Arial, sans-serif; color: #1f2a37; background: #f7f8fa; }
+  header.company-header { background: #fff; border-bottom: 1px solid #e3e6ea; padding: 14px 24px; font-weight: bold; }
+  main { max-width: 760px; margin: 24px auto; background: #fff; padding: 24px 32px; border: 1px solid #e3e6ea; border-radius: 6px; }
+  h1.job-title { font-size: 24px; margin: 0 0 4px; }
+  .subtitle { color: #5b6573; margin: 0 0 20px; }
+  .st-section { margin: 24px 0; }
+  .st-section h2 { font-size: 17px; border-bottom: 1px solid #e3e6ea; padding-bottom: 6px; }
+  oc-input { display: block; margin: 12px 0; }
+  .field { margin: 14px 0; }
+  .field > label, fieldset legend { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  fieldset { border: 0; padding: 0; margin: 14px 0; }
+  select { padding: 7px; min-width: 280px; }
+  .dropzone { border: 2px dashed #9aa5b1; border-radius: 6px; padding: 22px; text-align: center; color: #5b6573; position: relative; }
+  .dropzone.dragover { background: #eef5ff; border-color: #0a66c2; }
+  .browse-link { background: none; border: 0; color: #0a66c2; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+  .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; }
+  .file-name { margin-top: 6px; font-weight: 600; color: #1f2a37; }
+  .field-error { color: #c62828; font-size: 13px; margin-top: 3px; }
+  .button-submit { background: #0a66c2; color: #fff; border: 0; border-radius: 4px; padding: 11px 32px; font-size: 15px; font-weight: bold; cursor: pointer; }
+  .button-submit[disabled] { opacity: .6; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<header class="company-header"><span class="company-name">Fixture Robotics</span></header>
+<main id="st-application" data-fixture-root>
+  <h1 class="job-title">Field Applications Engineer</h1>
+  <p class="subtitle">Fixture Robotics &middot; Austin, TX, United States</p>
+  <form id="st-application-form" class="application-form" novalidate>
+    <section class="st-section" id="personal-information">
+      <h2>Personal information</h2>
+      <oc-input label="First name" name="firstName" autocomplete="given-name" required></oc-input>
+      <oc-input label="Last name" name="lastName" autocomplete="family-name" required></oc-input>
+      <oc-input label="Email" name="email" type="email" autocomplete="email" required></oc-input>
+      <oc-input label="Confirm your email" name="confirmEmail" type="email" autocomplete="off" required></oc-input>
+      <oc-input label="Phone number" name="phone" type="tel" autocomplete="tel" required></oc-input>
+      <oc-input label="Location (City)" name="location" autocomplete="address-level2"></oc-input>
+    </section>
+
+    <section class="st-section" id="experience">
+      <h2>Experience</h2>
+      <div class="field" id="resume-field">
+        <label for="resume">Resume<span aria-hidden="true">*</span></label>
+        <div class="file-upload dropzone" data-test="resume-dropzone" id="resume-dropzone">
+          <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" class="visually-hidden" required aria-required="true">
+          <span class="dropzone-text">Drag &amp; drop your resume or <button type="button" class="browse-link" id="resume-browse">Browse</button></span>
+          <div class="file-name" id="resume-file-name" aria-live="polite"></div>
+        </div>
+      </div>
+      <oc-input label="LinkedIn profile" name="linkedin" type="url"></oc-input>
+    </section>
+
+    <section class="st-section" id="screening-questions">
+      <h2>Screening questions</h2>
+      <div class="field">
+        <label for="education">What is your highest level of education? *</label>
+        <select id="education" name="education" required aria-required="true">
+          <option value="">Choose an option</option>
+          <option value="High school">High school</option>
+          <option value="Bachelor's degree">Bachelor's degree</option>
+          <option value="Master's degree">Master's degree</option>
+          <option value="PhD">PhD</option>
+        </select>
+      </div>
+      <fieldset id="travel-question">
+        <legend>Are you willing to travel up to 25% of the time? *</legend>
+        <input type="radio" id="travel-yes" name="travel" value="Yes" required aria-required="true"><label for="travel-yes">Yes</label>
+        <input type="radio" id="travel-no" name="travel" value="No" required aria-required="true"><label for="travel-no">No</label>
+      </fieldset>
+    </section>
+
+    <section class="st-section" id="consent">
+      <div class="field">
+        <input type="checkbox" id="privacy-consent" name="privacyConsent" value="yes" required aria-required="true">
+        <label for="privacy-consent">I agree to the privacy policy *</label>
+      </div>
+    </section>
+
+    <button type="submit" class="button-submit" data-test="footer-submit" id="st-submit">Submit</button>
+  </form>
+</main>
+<script src="../kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.FixtureKit;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  var STYLE =
+    ':host{display:block;margin:12px 0}' +
+    'label{display:block;font-weight:600;font-size:14px;margin-bottom:4px}' +
+    'label span{color:#c62828;margin-left:2px}' +
+    'input{width:100%;max-width:420px;box-sizing:border-box;padding:8px;border:1px solid #9aa5b1;border-radius:4px;font-size:14px}' +
+    'input[aria-invalid=true]{border-color:#c62828}' +
+    '.error{color:#c62828;font-size:13px;margin-top:3px}';
+
+  function OcInput() {
+    return Reflect.construct(HTMLElement, [], OcInput);
+  }
+  OcInput.prototype = Object.create(HTMLElement.prototype);
+  OcInput.prototype.constructor = OcInput;
+  Object.setPrototypeOf(OcInput, HTMLElement);
+
+  OcInput.prototype.connectedCallback = function () {
+    if (this._input) return;
+    var root = this.shadowRoot || this.attachShadow({ mode: "open" });
+    var required = this.hasAttribute("required");
+    var style = document.createElement("style");
+    style.textContent = STYLE;
+    var label = document.createElement("label");
+    label.setAttribute("for", "i");
+    label.appendChild(document.createTextNode(this.getAttribute("label") || ""));
+    if (required) {
+      var star = document.createElement("span");
+      star.setAttribute("aria-hidden", "true");
+      star.textContent = "*";
+      label.appendChild(star);
+    }
+    var input = document.createElement("input");
+    input.id = "i";
+    input.name = this.getAttribute("name") || "";
+    input.type = this.getAttribute("type") || "text";
+    if (this.getAttribute("autocomplete")) input.setAttribute("autocomplete", this.getAttribute("autocomplete"));
+    if (required) {
+      input.required = true;
+      input.setAttribute("aria-required", "true");
+    }
+    var err = document.createElement("div");
+    err.className = "error";
+    err.id = "err";
+    err.setAttribute("role", "alert");
+    err.hidden = true;
+    root.appendChild(style);
+    root.appendChild(label);
+    root.appendChild(input);
+    root.appendChild(err);
+    this._input = input;
+    this._err = err;
+    var self = this;
+    input.addEventListener("input", function () { if (String(input.value).trim()) self.clearError(); });
+    input.addEventListener("change", function () { if (String(input.value).trim()) self.clearError(); });
+  };
+  Object.defineProperty(OcInput.prototype, "value", {
+    get: function () { return this._input ? this._input.value : ""; },
+    set: function (v) { if (this._input) this._input.value = v; }
+  });
+  Object.defineProperty(OcInput.prototype, "name", {
+    get: function () { return this.getAttribute("name") || ""; }
+  });
+  Object.defineProperty(OcInput.prototype, "required", {
+    get: function () { return this.hasAttribute("required"); }
+  });
+  OcInput.prototype.setError = function (msg) {
+    this._err.textContent = msg;
+    this._err.hidden = false;
+    this._input.setAttribute("aria-invalid", "true");
+    this._input.setAttribute("aria-describedby", "err");
+  };
+  OcInput.prototype.clearError = function () {
+    this._err.textContent = "";
+    this._err.hidden = true;
+    this._input.removeAttribute("aria-invalid");
+    this._input.removeAttribute("aria-describedby");
+  };
+  OcInput.prototype.focus = function () { if (this._input) this._input.focus(); };
+  customElements.define("oc-input", OcInput);
+
+  var form = document.getElementById("st-application-form");
+  var resume = document.getElementById("resume");
+  var dropzone = document.getElementById("resume-dropzone");
+  var fileNameEl = document.getElementById("resume-file-name");
+  var droppedFiles = null;
+
+  function currentFiles() {
+    if (resume.files && resume.files.length) return resume.files;
+    return droppedFiles || [];
+  }
+  function showFile() {
+    var files = currentFiles();
+    fileNameEl.textContent = files.length ? files[0].name : "";
+    if (files.length) K.clearErrors(document.getElementById("resume-field"));
+  }
+
+  document.getElementById("resume-browse").addEventListener("click", function () { resume.click(); });
+  resume.addEventListener("change", function () { droppedFiles = null; showFile(); });
+  ["dragenter", "dragover"].forEach(function (t) {
+    dropzone.addEventListener(t, function (e) { e.preventDefault(); dropzone.classList.add("dragover"); });
+  });
+  dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("dragover"); });
+  dropzone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    try { resume.files = files; } catch (err) { /* not assignable */ }
+    if (!(resume.files && resume.files.length)) droppedFiles = Array.prototype.slice.call(files);
+    else droppedFiles = null;
+    showFile();
+  });
+
+  form.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t || t.getAttribute("aria-invalid") !== "true") return;
+    var box = t.closest("fieldset, .field");
+    if (box) K.clearErrors(box);
+  });
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    var invalid = [];
+    var ocs = Array.prototype.slice.call(form.querySelectorAll("oc-input"));
+    var byName = {};
+    ocs.forEach(function (oc) {
+      oc.clearError();
+      byName[oc.name] = oc;
+      if (oc.required && !String(oc.value).trim()) { oc.setError("This field is required"); invalid.push(oc); }
+    });
+    var email = byName.email, confirm = byName.confirmEmail;
+    if (String(email.value).trim() && !EMAIL_RE.test(String(email.value).trim())) {
+      email.setError("Please enter a valid email address"); invalid.push(email);
+    }
+    if (String(confirm.value).trim() && String(confirm.value).trim().toLowerCase() !== String(email.value).trim().toLowerCase()) {
+      confirm.setError("Emails do not match"); invalid.push(confirm);
+    }
+
+    // light-DOM controls
+    Array.prototype.forEach.call(form.querySelectorAll(".field-error"), function (n) { n.remove(); });
+    Array.prototype.forEach.call(form.querySelectorAll("[aria-invalid=true]"), function (n) { n.removeAttribute("aria-invalid"); });
+    if (!currentFiles().length) { K.fieldError(resume, "This field is required"); invalid.push(resume); }
+    var edu = document.getElementById("education");
+    if (!edu.value) { K.fieldError(edu, "This field is required"); invalid.push(edu); }
+    if (!form.querySelector("input[name=travel]:checked")) {
+      K.fieldError(document.getElementById("travel-yes"), "This field is required"); invalid.push(document.getElementById("travel-yes"));
+    }
+    var consent = document.getElementById("privacy-consent");
+    if (!consent.checked) { K.fieldError(consent, "This field is required"); invalid.push(consent); }
+
+    if (invalid.length) {
+      try { invalid[0].focus(); } catch (err) { /* ignore */ }
+      return;
+    }
+    submitted = true;
+    document.getElementById("st-submit").disabled = true;
+    var data = K.collect(form);
+    data.resume = Array.prototype.map.call(currentFiles(), function (f) { return f.name; });
+    K.submit("smartrecruiters", data, {
+      confirm: function () {
+        document.getElementById("st-application").innerHTML =
+          '<div class="confirmation" data-test="confirmation"><h1>Your application has been successfully submitted</h1>' +
+          '<p>Thank you for applying to Fixture Robotics.</p></div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

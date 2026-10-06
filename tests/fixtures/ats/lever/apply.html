@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixture Robotics - Robotics Controls Engineer - Apply</title>
+<style>
+  body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 0; background: #f9f9f9; color: #515357; }
+  [data-fixture-banner] { background:#fff3cd; color:#664d03; border:2px solid #ffcd39; padding:6px 10px; font:bold 14px sans-serif; text-align:center; }
+  .main-header { background: #fff; border-bottom: 1px solid #e2e2e2; padding: 16px 24px; font-weight: bold; color: #333; }
+  .content { max-width: 800px; margin: 0 auto; padding: 32px 16px 64px; background: #fff; }
+  .posting-headline h2 { font-size: 28px; color: #333; margin: 0 0 6px; }
+  .posting-categories { text-transform: uppercase; font-size: 12px; letter-spacing: 1px; color: #808080; margin-bottom: 20px; }
+  .application-form h4 { text-transform: uppercase; letter-spacing: 1px; font-size: 14px; color: #333; border-bottom: 1px solid #e2e2e2; padding-bottom: 8px; margin-top: 32px; }
+  .application-question { display: flex; flex-wrap: wrap; align-items: flex-start; margin: 0 0 16px; list-style: none; padding: 0; }
+  .application-label { width: 34%; min-width: 180px; font-size: 15px; color: #333; padding-top: 8px; }
+  .application-field { flex: 1; min-width: 220px; }
+  .application-field input[type=text], .application-field input[type=email], .application-field input[type=tel], .application-field textarea, .application-field select { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 3px; }
+  .application-field textarea { min-height: 100px; }
+  .required { color: #ff794f; font-size: 10px; vertical-align: top; margin-left: 2px; }
+  .application-file-input { display: inline-block; position: relative; border: 1px solid #579eee; color: #579eee; padding: 8px 18px; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: bold; letter-spacing: 1px; }
+  .application-file-input input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0,0,0,0); left: 0; top: 0; }
+  .filename { margin-left: 10px; font-size: 14px; color: #333; }
+  ul.application-answers { list-style: none; margin: 0; padding: 0; }
+  ul.application-answers li { margin: 6px 0; }
+  .error-message { color: #e2343c; font-size: 13px; margin-top: 4px; width: 100%; }
+  [aria-invalid=true] { border-color: #e2343c !important; }
+  .template-btn-submit { background: #579eee; color: #fff; border: 0; padding: 12px 30px; border-radius: 3px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; cursor: pointer; }
+  .template-btn-submit[disabled] { opacity: .6; }
+  .eeo-description { font-size: 13px; }
+  #form-error-banner { background: #fdecea; color: #a12b2b; border: 1px solid #f3c0c0; padding: 10px; border-radius: 3px; margin-bottom: 16px; }
+</style>
+<script src="../kit.js"></script>
+</head>
+<body>
+<div data-fixture-banner role="note">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<div class="main-header page-full-width section-wrapper"><a class="main-header-logo" href="index.html">Fixture Robotics</a></div>
+<div class="content-wrapper application-page" data-fixture-root>
+  <div class="content" id="application-content">
+    <div class="section-wrapper page-full-width">
+      <div class="posting-headline">
+        <h2>Robotics Controls Engineer</h2>
+        <div class="posting-categories">San Francisco, CA / Engineering – Robotics / Full-time</div>
+      </div>
+    </div>
+
+    <form id="application-form" class="application-form" action="#" method="POST" enctype="multipart/form-data" novalidate>
+      <div id="form-error-banner" role="alert" hidden>There are errors in your form. Please correct them below.</div>
+
+      <div class="section page-centered application-form">
+        <h4>Submit your application</h4>
+        <ul style="padding:0;margin:0">
+          <li class="application-question resume">
+            <div class="application-label" id="label-resume">Resume/CV<span class="required">✱</span></div>
+            <div class="application-field file-upload">
+              <label class="application-file-input">
+                <span class="default-label">ATTACH RESUME/CV</span>
+                <input type="file" name="resume" id="resume-upload-input" required aria-required="true" aria-labelledby="label-resume" accept=".pdf,.doc,.docx,.txt,.rtf,.odt">
+              </label>
+              <span class="filename" id="resume-filename" aria-live="polite"></span>
+            </div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-name">Full name<span class="required">✱</span></div>
+            <div class="application-field"><input type="text" name="name" id="input-name" required aria-required="true" aria-labelledby="label-name" autocomplete="name"></div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-email">Email<span class="required">✱</span></div>
+            <div class="application-field"><input type="email" name="email" id="input-email" required aria-required="true" aria-labelledby="label-email" autocomplete="email"></div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-phone">Phone</div>
+            <div class="application-field"><input type="tel" name="phone" id="input-phone" aria-labelledby="label-phone" autocomplete="tel"></div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-org">Current company</div>
+            <div class="application-field"><input type="text" name="org" id="input-org" aria-labelledby="label-org" autocomplete="organization"></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section page-centered application-form">
+        <h4>Links</h4>
+        <ul style="padding:0;margin:0">
+          <li class="application-question">
+            <div class="application-label" id="label-linkedin">LinkedIn URL</div>
+            <div class="application-field"><input type="text" name="urls[LinkedIn]" id="input-linkedin" aria-labelledby="label-linkedin"></div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-github">GitHub URL</div>
+            <div class="application-field"><input type="text" name="urls[GitHub]" id="input-github" aria-labelledby="label-github"></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section page-centered application-form application-additional custom-question" data-qa="additional-cards">
+        <h4>Additional questions</h4>
+        <input type="hidden" name="cards[abc][baseTemplate]" value="{&quot;id&quot;:&quot;abc&quot;}">
+        <ul style="padding:0;margin:0">
+          <li class="application-question custom-question">
+            <div class="application-label" id="label-card-field0">Are you at least 18 years of age?<span class="required">✱</span></div>
+            <div class="application-field">
+              <ul class="application-answers" data-qa="multiple-choice" role="radiogroup" aria-labelledby="label-card-field0" aria-required="true">
+                <li><label><input type="radio" name="cards[abc][field0]" value="Yes" required> <span class="application-answer-alternative">Yes</span></label></li>
+                <li><label><input type="radio" name="cards[abc][field0]" value="No" required> <span class="application-answer-alternative">No</span></label></li>
+              </ul>
+            </div>
+          </li>
+          <li class="application-question custom-question">
+            <div class="application-label" id="label-card-field1">Which offices are you interested in?</div>
+            <div class="application-field">
+              <ul class="application-answers" data-qa="checkboxes" role="group" aria-labelledby="label-card-field1">
+                <li><label><input type="checkbox" name="cards[abc][field1]" value="New York"> <span class="application-answer-alternative">New York</span></label></li>
+                <li><label><input type="checkbox" name="cards[abc][field1]" value="San Francisco"> <span class="application-answer-alternative">San Francisco</span></label></li>
+                <li><label><input type="checkbox" name="cards[abc][field1]" value="Remote"> <span class="application-answer-alternative">Remote</span></label></li>
+              </ul>
+            </div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-comments">Additional information</div>
+            <div class="application-field"><textarea name="comments" id="input-comments" aria-labelledby="label-comments" placeholder="Add a cover letter or anything else you want to share."></textarea></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section page-centered application-form" data-qa="eeo-survey">
+        <h4>U.S. Equal Employment Opportunity information</h4>
+        <p class="eeo-description">Our company values diversity. To ensure that we comply with reporting requirements and to learn more about how we can increase diversity in our candidate pool, we invite you to voluntarily provide demographic information in a confidential survey at the end of this application. Providing this information is optional. It will not be accessible or used in the hiring process, and has no effect on your opportunity for employment.</p>
+        <ul style="padding:0;margin:0">
+          <li class="application-question">
+            <div class="application-label" id="label-eeo-gender">Gender</div>
+            <div class="application-field">
+              <select name="eeo[gender]" id="eeo-gender" aria-labelledby="label-eeo-gender">
+                <option value="">Select ...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Decline to self-identify">Decline to self-identify</option>
+              </select>
+            </div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-eeo-race">Race</div>
+            <div class="application-field">
+              <select name="eeo[race]" id="eeo-race" aria-labelledby="label-eeo-race">
+                <option value="">Select ...</option>
+                <option value="Asian (Not Hispanic or Latino)">Asian (Not Hispanic or Latino)</option>
+                <option value="Black or African American (Not Hispanic or Latino)">Black or African American (Not Hispanic or Latino)</option>
+                <option value="Hispanic or Latino">Hispanic or Latino</option>
+                <option value="White (Not Hispanic or Latino)">White (Not Hispanic or Latino)</option>
+                <option value="Two or More Races (Not Hispanic or Latino)">Two or More Races (Not Hispanic or Latino)</option>
+                <option value="Decline to self-identify">Decline to self-identify</option>
+              </select>
+            </div>
+          </li>
+          <li class="application-question">
+            <div class="application-label" id="label-eeo-veteran">Veteran status</div>
+            <div class="application-field">
+              <select name="eeo[veteran]" id="eeo-veteran" aria-labelledby="label-eeo-veteran">
+                <option value="">Select ...</option>
+                <option value="I am a veteran">I am a veteran</option>
+                <option value="I am not a veteran">I am not a veteran</option>
+                <option value="Decline to self-identify">Decline to self-identify</option>
+              </select>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div id="h-captcha" class="h-captcha" data-sitekey="00000000-0000-0000-0000-000000000000" data-size="invisible"></div>
+
+      <div class="section page-centered last-section-apply">
+        <button type="submit" class="template-btn-submit" id="btn-submit">Submit application</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("application-form");
+  var banner = document.getElementById("form-error-banner");
+  var resume = document.getElementById("resume-upload-input");
+  var resumeName = document.getElementById("resume-filename");
+  var MSG = "✱ This field is required";
+
+  function questionOf(el) { return el.closest("li.application-question"); }
+  function errId(el) { return "error-" + (el.id || el.name.replace(/[^a-z0-9]+/gi, "-")); }
+
+  function showError(el, msg) {
+    var q = questionOf(el);
+    var id = errId(el);
+    var node = document.getElementById(id);
+    if (!node) {
+      node = document.createElement("div");
+      node.id = id;
+      node.className = "error-message";
+      node.setAttribute("role", "alert");
+      q.appendChild(node);
+    }
+    node.textContent = msg;
+    var targets = el.type === "radio" ? form.querySelectorAll('input[name="' + el.name + '"]') : [el];
+    Array.prototype.forEach.call(targets, function (t) {
+      t.setAttribute("aria-invalid", "true");
+      t.setAttribute("aria-describedby", id);
+    });
+  }
+  function clearError(el) {
+    var node = document.getElementById(errId(el));
+    if (node) node.remove();
+    var targets = el.type === "radio" ? form.querySelectorAll('input[name="' + el.name + '"]') : [el];
+    Array.prototype.forEach.call(targets, function (t) { t.removeAttribute("aria-invalid"); t.removeAttribute("aria-describedby"); });
+    if (!form.querySelector("[aria-invalid=true]")) banner.hidden = true;
+  }
+
+  function isEmpty(el) {
+    if (el.type === "file") return !(el.files && el.files.length);
+    if (el.type === "radio") return !form.querySelector('input[name="' + el.name + '"]:checked');
+    return !String(el.value || "").trim();
+  }
+
+  resume.addEventListener("change", function () {
+    var f = resume.files && resume.files[0];
+    resumeName.textContent = f ? f.name : "";
+    if (f) clearError(resume);
+  });
+  form.addEventListener("input", function (e) { if (e.target.getAttribute("aria-invalid") === "true" && !isEmpty(e.target)) clearError(e.target); });
+  form.addEventListener("change", function (e) { if (e.target.type !== "file" && e.target.getAttribute("aria-invalid") === "true" && !isEmpty(e.target)) clearError(e.target); });
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    var invalid = [];
+    var seen = {};
+    Array.prototype.forEach.call(form.querySelectorAll("input[required], textarea[required], select[required]"), function (el) {
+      if (el.type === "radio") { if (seen[el.name]) return; seen[el.name] = true; }
+      if (isEmpty(el)) { showError(el, MSG); invalid.push(el); } else clearError(el);
+    });
+    var email = document.getElementById("input-email");
+    if (email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+      showError(email, "✱ Please enter a valid email address"); invalid.push(email);
+    }
+    if (invalid.length) {
+      banner.hidden = false;
+      try { invalid[0].focus(); } catch (err) {}
+      return;
+    }
+    banner.hidden = true;
+    submitted = true;
+    document.getElementById("btn-submit").disabled = true;
+    var data = FixtureKit.collect(form);
+    delete data["cards[abc][baseTemplate]"];
+    // a single-name checkbox group always reported as an array
+    data["cards[abc][field1]"] = Array.prototype.map.call(form.querySelectorAll('input[name="cards[abc][field1]"]:checked'), function (c) { return c.value; });
+    FixtureKit.submit("lever", data, {
+      confirm: function () {
+        document.getElementById("application-content").innerHTML =
+          '<div class="section page-centered application-confirmation" data-qa="msg-submit-success">' +
+          '<h3>Application submitted!</h3>' +
+          '<p>Thanks for applying to Fixture Robotics. We\'ve received your application for Robotics Controls Engineer and will be in touch.</p>' +
+          '</div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Security Engineer - Fixture Security</title>
+<style>
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #202124; background: #f1f3f4; }
+  main { max-width: 640px; margin: 24px auto; background: #fff; padding: 24px 32px; border: 1px solid #dadce0; border-radius: 8px; }
+  .field { margin: 14px 0; }
+  .field label { display: block; font-weight: bold; margin-bottom: 4px; }
+  .field input { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; border: 1px solid #bdc1c6; border-radius: 4px; }
+  .field-error { color: #c5221f; font-size: 13px; margin-top: 3px; }
+  .captcha-message { color: #c5221f; font-weight: bold; margin: 10px 0; }
+  .btn { background: #1a73e8; color: #fff; border: 0; padding: 10px 24px; border-radius: 4px; font-size: 15px; cursor: pointer; }
+  .btn[disabled] { opacity: .6; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<main id="app" data-fixture-root>
+  <h1>Fixture Security — Security Engineer</h1>
+  <p>San Francisco, CA &middot; Full-time</p>
+  <p>Fixture Security protects small businesses from account takeover. As a Security Engineer you will threat-model new features, run our bug bounty program and harden our cloud infrastructure.</p>
+  <form id="application-form" method="post" action="#" novalidate>
+    <div class="field">
+      <label for="name">Name *</label>
+      <input type="text" id="name" name="name" required autocomplete="name">
+    </div>
+    <div class="field">
+      <label for="email">Email *</label>
+      <input type="email" id="email" name="email" required autocomplete="email">
+    </div>
+    <div id="captcha-container"></div>
+    <button type="submit" class="btn" id="submit-btn">Submit Application</button>
+  </form>
+</main>
+<!-- invisible reCAPTCHA badge present from page load; not an interactive challenge -->
+<div class="grecaptcha-badge" data-style="bottomright" style="width:256px;height:60px;position:fixed;visibility:hidden;bottom:14px;right:-186px;box-shadow:gray 0 0 5px"></div>
+<script src="../kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.FixtureKit;
+  var form = document.getElementById("application-form");
+  var container = document.getElementById("captcha-container");
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var state = { challengeShown: false, solved: false };
+  window.__captchaState = state;
+
+  function showChallenge() {
+    if (state.challengeShown) return;
+    state.challengeShown = true;
+    container.innerHTML =
+      '<p class="captcha-message" id="captcha-message" role="alert">Please complete the security check to continue.</p>' +
+      '<div class="g-recaptcha" data-sitekey="fixture" style="width:304px;height:78px">' +
+      '<div style="width:304px;height:78px">' +
+      '<iframe title="reCAPTCHA" src="recaptcha/api2/anchor.html?k=fixture" width="304" height="78" style="width:304px;height:78px;border:0" role="presentation" name="a-fixture" frameborder="0" scrolling="no"></iframe>' +
+      '</div>' +
+      '<textarea id="g-recaptcha-response" name="g-recaptcha-response" class="g-recaptcha-response" style="width:250px;height:40px;border:1px solid #c1c1c1;margin:10px 25px;padding:0;resize:none;display:none"></textarea>' +
+      '</div>';
+  }
+
+  window.FixtureKit.solveCaptcha = function () {
+    state.solved = true;
+    state.challengeShown = false;
+    container.innerHTML = "";
+    return true;
+  };
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    K.clearErrors(form);
+    var missing = K.requireFields(form);
+    var email = document.getElementById("email");
+    if (String(email.value).trim() && !EMAIL_RE.test(String(email.value).trim())) {
+      K.fieldError(email, "Please enter a valid email address.");
+      missing.push(email);
+    }
+    if (missing.length) return;
+    if (!state.solved) { showChallenge(); return; }
+    submitted = true;
+    document.getElementById("submit-btn").disabled = true;
+    K.submit("captcha", {
+      name: String(document.getElementById("name").value).trim(),
+      email: String(email.value).trim()
+    }, {
+      confirm: function () {
+        document.getElementById("app").innerHTML =
+          '<div class="confirmation"><h1>Thank you for applying.</h1><p>Your application to Fixture Security has been received.</p></div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

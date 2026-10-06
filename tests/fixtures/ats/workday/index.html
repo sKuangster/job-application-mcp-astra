@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software Engineer II - Fixture Corp Careers (LOCAL TEST FIXTURE)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 "Helvetica Neue", Arial, sans-serif; color: #333; background: #f6f7f8; }
+  [data-fixture-banner] { background: #fff3cd; color: #664d03; border: 2px solid #ffcd39; padding: 6px 10px; font: bold 14px sans-serif; text-align: center; }
+  .wd-header { background: #0875e1; color: #fff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .wd-header .logo { font-weight: bold; font-size: 18px; }
+  .wd-page { max-width: 880px; margin: 24px auto; background: #fff; border: 1px solid #dfe2e6; border-radius: 8px; padding: 24px 32px; }
+  h1, h2, h3 { color: #1e1e1e; }
+  .wd-meta { list-style: none; padding: 0; margin: 0 0 16px; color: #5e6670; }
+  .wd-meta li { margin: 2px 0; }
+  .wd-btn, .wd-page a[role="button"], .wd-page button { font: inherit; cursor: pointer; }
+  .wd-primary { display: inline-block; background: #0875e1; color: #fff; border: 0; border-radius: 20px; padding: 8px 24px; text-decoration: none; font-weight: bold; }
+  .wd-secondary { display: inline-block; background: #fff; color: #0875e1; border: 1px solid #0875e1; border-radius: 20px; padding: 8px 24px; text-decoration: none; }
+  .wd-link { background: none; border: 0; color: #0875e1; text-decoration: underline; padding: 0; }
+  .wd-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .wd-modal { background: #fff; border-radius: 8px; padding: 24px; width: 420px; max-width: 95vw; }
+  .wd-modal .wd-option { display: block; margin: 10px 0; text-align: center; }
+  [data-automation-id^="formField"] { margin: 0 0 16px; position: relative; }
+  [data-automation-id^="formField"] > label, fieldset legend { display: block; font-weight: bold; margin-bottom: 4px; }
+  abbr[title="required"] { color: #de2b2b; text-decoration: none; margin-left: 2px; }
+  input[type="text"], input[type="email"], input[type="password"], input[type="tel"], textarea { width: 100%; max-width: 420px; padding: 7px 9px; border: 1px solid #a1aab3; border-radius: 4px; font: inherit; }
+  textarea { max-width: 100%; min-height: 110px; }
+  [aria-invalid="true"] { border-color: #de2b2b !important; box-shadow: 0 0 0 1px #de2b2b; }
+  button[aria-haspopup="listbox"] { min-width: 260px; text-align: left; padding: 7px 9px; border: 1px solid #a1aab3; border-radius: 4px; background: #fff; }
+  button[aria-haspopup="listbox"]::after { content: " \25BE"; float: right; }
+  ul[role="listbox"] { position: absolute; z-index: 5; list-style: none; margin: 2px 0 0; padding: 4px 0; background: #fff; border: 1px solid #a1aab3; border-radius: 4px; min-width: 260px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+  li[role="option"] { padding: 6px 12px; cursor: pointer; }
+  li[role="option"]:hover, li[role="option"][aria-selected="true"] { background: #e6f1fc; }
+  [data-automation-id="multiSelectContainer"] { display: flex; max-width: 420px; border: 1px solid #a1aab3; border-radius: 4px; background: #fff; }
+  [data-automation-id="multiSelectContainer"] input { border: 0; flex: 1; }
+  [data-automation-id="promptIcon"] { border: 0; background: none; padding: 0 10px; }
+  [data-automation-id="promptOptionList"] { position: absolute; z-index: 5; background: #fff; border: 1px solid #a1aab3; border-radius: 4px; width: 420px; max-width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+  [data-automation-id="promptOption"] { padding: 6px 12px; cursor: pointer; }
+  [data-automation-id="promptOption"]:hover { background: #e6f1fc; }
+  [data-automation-id="selectedItem"] { display: inline-block; background: #e6f1fc; border: 1px solid #0875e1; border-radius: 12px; padding: 2px 10px; margin-top: 6px; }
+  [data-automation-id="errorMessage"] { color: #de2b2b; font-size: 13px; }
+  [data-automation-id="errorMessage"] p { margin: 4px 0 0; }
+  [data-automation-id="errorBanner"] { background: #fdecea; border: 1px solid #de2b2b; color: #a1150b; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; font-weight: bold; }
+  [data-automation-id="signInNotice"] { background: #e8f5e9; border: 1px solid #43a047; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; }
+  fieldset { border: 0; padding: 0; margin: 0 0 16px; }
+  .wd-radio, .wd-check { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0; }
+  [data-automation-id="progressBar"] ol { display: flex; list-style: none; padding: 0; margin: 0 0 20px; gap: 6px; flex-wrap: wrap; }
+  [data-automation-id="progressBar"] li { flex: 1; min-width: 110px; border-top: 4px solid #dfe2e6; padding-top: 6px; color: #5e6670; font-size: 12px; }
+  [data-automation-id="progressBar"] li[data-automation-id="progressBarActiveStep"] { border-color: #0875e1; color: #0875e1; font-weight: bold; }
+  [data-automation-id="progressBar"] li[data-automation-id="progressBarCompletedStep"] { border-color: #43a047; }
+  .visually-hidden, .wd-visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; opacity: 0; white-space: nowrap; }
+  [data-automation-id="file-upload-drop-zone"] { border: 2px dashed #a1aab3; border-radius: 6px; padding: 20px; text-align: center; max-width: 420px; }
+  [data-automation-id="file-upload-drop-zone"].dragover { border-color: #0875e1; background: #e6f1fc; }
+  [data-automation-id="file-upload-successful"] { margin-top: 6px; color: #2e7d32; font-weight: bold; }
+  .wd-file-row { display: flex; gap: 10px; align-items: center; }
+  .wd-nav { display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #dfe2e6; margin-top: 24px; padding-top: 16px; }
+  .wd-work-block { border: 1px solid #dfe2e6; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+  dl.wd-review dt { font-weight: bold; margin-top: 8px; }
+  dl.wd-review dd { margin: 0 0 0 0; color: #333; }
+  .wd-staticValue { padding: 7px 0; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+
+<header class="wd-header" data-automation-id="header">
+  <div class="logo" data-automation-id="logoLink">Fixture Corp Careers</div>
+  <div data-automation-id="utilityMenu"><span data-automation-id="signedInUser" hidden></span></div>
+</header>
+
+<div data-fixture-root data-automation-id="jobPostingPage" id="wd-root">
+
+  <!-- ===================== JOB POSTING ===================== -->
+  <section class="wd-page" id="step-job" data-automation-id="jobPostingDetails">
+    <h1 data-automation-id="jobPostingHeader">Software Engineer II</h1>
+    <ul class="wd-meta">
+      <li data-automation-id="locations"><span class="wd-visually-hidden">locations</span>San Francisco, CA</li>
+      <li data-automation-id="time"><span class="wd-visually-hidden">time type</span>Full time</li>
+      <li data-automation-id="postedOn"><span class="wd-visually-hidden">posted on</span>Posted 3 Days Ago</li>
+      <li data-automation-id="requisitionId"><span class="wd-visually-hidden">job requisition id</span>R-12345</li>
+    </ul>
+    <a role="button" class="wd-primary" data-automation-id="adventureButton" href="#">Apply</a>
+    <div data-automation-id="jobPostingDescription">
+      <h2>About Fixture Corp</h2>
+      <p>Fixture Corp builds dependable infrastructure software used by thousands of engineering teams. We value craftsmanship, clear communication and kindness.</p>
+      <h2>The Role</h2>
+      <p>As a Software Engineer II on the Platform team you will design, build and operate distributed services that power our core product. You will partner with product managers and designers to ship features end to end, participate in code review, and help improve our reliability and developer tooling.</p>
+      <h2>What You Will Do</h2>
+      <ul>
+        <li>Design and implement scalable backend services in Python, Go or TypeScript.</li>
+        <li>Own features from design document to production rollout and monitoring.</li>
+        <li>Mentor junior engineers and contribute to our engineering culture.</li>
+      </ul>
+      <h2>Qualifications</h2>
+      <ul>
+        <li>3+ years of professional software engineering experience.</li>
+        <li>Experience with cloud infrastructure, relational databases and REST APIs.</li>
+        <li>Bachelor's degree in Computer Science or equivalent practical experience.</li>
+      </ul>
+      <p>Fixture Corp is an equal opportunity employer. Compensation range: $140,000 - $185,000 USD.</p>
+    </div>
+
+    <div class="wd-modal-backdrop" id="apply-modal" data-automation-id="applyModal" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" hidden>
+      <div class="wd-modal">
+        <h2 id="apply-modal-title" data-automation-id="applyModalTitle">Start Your Application</h2>
+        <a role="button" class="wd-primary wd-option" data-automation-id="autofillWithResume" href="#">Autofill with Resume</a>
+        <a role="button" class="wd-secondary wd-option" data-automation-id="applyManually" href="#">Apply Manually</a>
+        <a class="wd-option" data-automation-id="useMyLastApplication" href="#">Use My Last Application</a>
+        <div style="text-align:right"><button type="button" class="wd-link" data-automation-id="closeButton" aria-label="Close">Close</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CREATE ACCOUNT ===================== -->
+  <section class="wd-page" id="step-create-account" data-automation-id="createAccountPage" hidden>
+    <h2 data-automation-id="pageHeader">Create Account</h2>
+    <form id="create-account-form" novalidate data-automation-id="createAccountForm">
+      <div data-automation-id="errorBanner" role="alert" hidden>Errors Found</div>
+      <div data-automation-id="formField-email">
+        <label for="ca-email">Email Address<abbr title="required">*</abbr></label>
+        <div><input type="email" id="ca-email" data-automation-id="email" aria-required="true" autocomplete="email"></div>
+      </div>
+      <div data-automation-id="formField-password">
+        <label for="ca-password">Password<abbr title="required">*</abbr></label>
+        <div><input type="password" id="ca-password" data-automation-id="password" aria-required="true" autocomplete="new-password"></div>
+        <div data-automation-id="passwordRequirements" style="color:#5e6670;font-size:12px">Password must be at least 8 characters and include an uppercase letter, a number, and a special character.</div>
+      </div>
+      <div data-automation-id="formField-verifyPassword">
+        <label for="ca-verify-password">Verify New Password<abbr title="required">*</abbr></label>
+        <div><input type="password" id="ca-verify-password" data-automation-id="verifyPassword" aria-required="true" autocomplete="new-password"></div>
+      </div>
+      <div data-automation-id="formField-createAccountCheckbox">
+        <div class="wd-check">
+          <input type="checkbox" id="ca-terms" data-automation-id="createAccountCheckbox" aria-required="true">
+          <label for="ca-terms">Yes, I have read and consent to the terms and conditions</label>
+        </div>
+      </div>
+      <button type="submit" class="wd-primary" data-automation-id="createAccountSubmitButton">Create Account</button>
+    </form>
+    <p>Already have an account? <button type="button" class="wd-link" data-automation-id="signInLink">Sign In</button></p>
+  </section>
+
+  <!-- ===================== SIGN IN ===================== -->
+  <section class="wd-page" id="step-sign-in" data-automation-id="signInPage" hidden>
+    <h2 data-automation-id="pageHeader">Sign In</h2>
+    <div data-automation-id="signInNotice" role="status" hidden></div>
+    <form id="sign-in-form" novalidate data-automation-id="signInForm">
+      <div data-automation-id="errorBanner" role="alert" hidden>Errors Found</div>
+      <div data-automation-id="signInError" hidden></div>
+      <div data-automation-id="formField-email">
+        <label for="si-email">Email Address<abbr title="required">*</abbr></label>
+        <div><input type="email" id="si-email" data-automation-id="email" aria-required="true" autocomplete="email"></div>
+      </div>
+      <div data-automation-id="formField-password">
+        <label for="si-password">Password<abbr title="required">*</abbr></label>
+        <div><input type="password" id="si-password" data-automation-id="password" aria-required="true" autocomplete="current-password"></div>
+      </div>
+      <button type="submit" class="wd-primary" data-automation-id="signInSubmitButton">Sign In</button>
+    </form>
+    <p>Don't have an account yet? <button type="button" class="wd-link" data-automation-id="createAccountLink">Create Account</button></p>
+  </section>
+
+  <!-- ===================== APPLICATION FLOW ===================== -->
+  <section class="wd-page" id="apply-flow" data-automation-id="applyFlowPage" hidden>
+    <h1 data-automation-id="applyFlowJobTitle" style="font-size:18px;color:#5e6670">Software Engineer II</h1>
+    <div data-automation-id="progressBar">
+      <ol>
+        <li data-step="1" data-automation-id="progressBarActiveStep" aria-current="step"><span class="wd-visually-hidden" data-step-sr>current step 1 of 6</span><div>My Information</div></li>
+        <li data-step="2" data-automation-id="progressBarInactiveStep"><span class="wd-visually-hidden" data-step-sr>step 2 of 6</span><div>My Experience</div></li>
+        <li data-step="3" data-automation-id="progressBarInactiveStep"><span class="wd-visually-hidden" data-step-sr>step 3 of 6</span><div>Application Questions</div></li>
+        <li data-step="4" data-automation-id="progressBarInactiveStep"><span class="wd-visually-hidden" data-step-sr>step 4 of 6</span><div>Voluntary Disclosures</div></li>
+        <li data-step="5" data-automation-id="progressBarInactiveStep"><span class="wd-visually-hidden" data-step-sr>step 5 of 6</span><div>Self Identify</div></li>
+        <li data-step="6" data-automation-id="progressBarInactiveStep"><span class="wd-visually-hidden" data-step-sr>step 6 of 6</span><div>Review</div></li>
+      </ol>
+    </div>
+
+    <div data-automation-id="errorBanner" id="flow-error-banner" role="alert" hidden>Errors Found</div>
+
+    <!-- Step 1: My Information -->
+    <div data-automation-id="applyFlowMyInfoPage" data-flow-step="1" id="flow-step-1">
+      <h2 data-automation-id="pageHeader">My Information</h2>
+
+      <div data-automation-id="formField-source">
+        <label id="source-label" for="source--source">How Did You Hear About Us?<abbr title="required">*</abbr></label>
+        <div data-automation-id="multiSelectContainer" id="source-container">
+          <input type="text" id="source--source" data-automation-id="searchBox" placeholder="Search" aria-labelledby="source-label" autocomplete="off" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="source-options">
+          <button type="button" data-automation-id="promptIcon" aria-label="How Did You Hear About Us?">&#8801;</button>
+        </div>
+        <div data-automation-id="selectedItemList" id="source-selected"></div>
+        <div data-automation-id="promptOptionList" role="listbox" id="source-options" aria-labelledby="source-label" hidden>
+          <div role="option" aria-selected="false" data-automation-id="promptOption" data-automation-label="Company Website">Company Website</div>
+          <div role="option" aria-selected="false" data-automation-id="promptOption" data-automation-label="LinkedIn">LinkedIn</div>
+          <div role="option" aria-selected="false" data-automation-id="promptOption" data-automation-label="Indeed">Indeed</div>
+          <div role="option" aria-selected="false" data-automation-id="promptOption" data-automation-label="Referral">Referral</div>
+          <div role="option" aria-selected="false" data-automation-id="promptOption" data-automation-label="Other">Other</div>
+        </div>
+      </div>
+
+      <fieldset data-automation-id="formField-candidateIsPreviousWorker" id="previousWorker-group">
+        <legend>Have you previously worked for Fixture Corp?<abbr title="required">*</abbr></legend>
+        <div class="wd-radio"><input type="radio" id="previousWorker-yes" name="previousWorker" value="Yes" required><label for="previousWorker-yes">Yes</label></div>
+        <div class="wd-radio"><input type="radio" id="previousWorker-no" name="previousWorker" value="No" required><label for="previousWorker-no">No</label></div>
+      </fieldset>
+
+      <h3>Legal Name</h3>
+      <div data-automation-id="formField-legalName--firstName">
+        <label for="name--legalName--firstName">First Name<abbr title="required">*</abbr></label>
+        <div><input type="text" id="name--legalName--firstName" data-automation-id="legalNameSection_firstName" aria-required="true" autocomplete="given-name"></div>
+      </div>
+      <div data-automation-id="formField-legalName--lastName">
+        <label for="name--legalName--lastName">Last Name<abbr title="required">*</abbr></label>
+        <div><input type="text" id="name--legalName--lastName" data-automation-id="legalNameSection_lastName" aria-required="true" autocomplete="family-name"></div>
+      </div>
+
+      <h3>Address</h3>
+      <div data-automation-id="formField-country">
+        <label for="country--country">Country<abbr title="required">*</abbr></label>
+        <div><button type="button" id="country--country" aria-haspopup="listbox" aria-expanded="false" data-automation-id="countryDropdown" data-listbox="country" aria-label="Country United States of America Required" value="USA">United States of America</button></div>
+      </div>
+      <div data-automation-id="formField-addressLine1">
+        <label for="address--addressLine1">Address Line 1<abbr title="required">*</abbr></label>
+        <div><input type="text" id="address--addressLine1" data-automation-id="addressSection_addressLine1" aria-required="true" autocomplete="address-line1"></div>
+      </div>
+      <div data-automation-id="formField-city">
+        <label for="address--city">City<abbr title="required">*</abbr></label>
+        <div><input type="text" id="address--city" data-automation-id="addressSection_city" aria-required="true" autocomplete="address-level2"></div>
+      </div>
+      <div data-automation-id="formField-countryRegion">
+        <label for="address--countryRegion">State<abbr title="required">*</abbr></label>
+        <div><button type="button" id="address--countryRegion" aria-haspopup="listbox" aria-expanded="false" data-automation-id="addressSection_countryRegion" data-listbox="state" aria-label="State Select One Required" value="">Select One</button></div>
+      </div>
+      <div data-automation-id="formField-postalCode">
+        <label for="address--postalCode">Postal Code<abbr title="required">*</abbr></label>
+        <div><input type="text" id="address--postalCode" data-automation-id="addressSection_postalCode" aria-required="true" autocomplete="postal-code"></div>
+      </div>
+
+      <h3>Phone</h3>
+      <div data-automation-id="formField-phoneType">
+        <label for="phoneNumber--phoneType">Phone Device Type<abbr title="required">*</abbr></label>
+        <div><button type="button" id="phoneNumber--phoneType" aria-haspopup="listbox" aria-expanded="false" data-automation-id="phone-device-type" data-listbox="phoneType" aria-label="Phone Device Type Select One Required" value="">Select One</button></div>
+      </div>
+      <div data-automation-id="formField-countryPhoneCode">
+        <label id="countryPhoneCode-label">Country Phone Code</label>
+        <div class="wd-staticValue" data-automation-id="countryPhoneCode" aria-labelledby="countryPhoneCode-label">United States of America (+1)</div>
+      </div>
+      <div data-automation-id="formField-phoneNumber">
+        <label for="phoneNumber--phoneNumber">Phone Number<abbr title="required">*</abbr></label>
+        <div><input type="tel" id="phoneNumber--phoneNumber" data-automation-id="phone-number" aria-required="true" autocomplete="tel-national"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: My Experience -->
+    <div data-automation-id="applyFlowMyExpPage" data-flow-step="2" id="flow-step-2" hidden>
+      <h2 data-automation-id="pageHeader">My Experience</h2>
+
+      <h3 id="workExperience-heading">Work Experience</h3>
+      <div id="workExperience-list" data-automation-id="workExperienceSection"></div>
+      <button type="button" class="wd-secondary" data-automation-id="Add" aria-label="Add Work Experience" id="workExperience-add">Add</button>
+
+      <h3>Resume/CV</h3>
+      <div data-automation-id="formField-resume">
+        <label for="resumeAttachments--attachments">Upload a file (5MB max)<abbr title="required">*</abbr></label>
+        <div data-automation-id="file-upload-drop-zone" id="resume-drop-zone">
+          <div>Drop file here</div>
+          <div>or</div>
+          <button type="button" class="wd-secondary" data-automation-id="select-files">Select files</button>
+          <input type="file" id="resumeAttachments--attachments" class="wd-visually-hidden" data-automation-id="file-upload-input-ref" aria-required="true" multiple accept=".pdf,.doc,.docx,.txt,.rtf">
+        </div>
+        <div id="resume-file-list" data-automation-id="file-upload-file-list"></div>
+      </div>
+
+      <h3>Social Network URLs</h3>
+      <div data-automation-id="formField-linkedinQuestion">
+        <label for="socialNetworkAccounts--linkedInAccount">LinkedIn</label>
+        <div><input type="text" id="socialNetworkAccounts--linkedInAccount" data-automation-id="linkedinQuestion" autocomplete="url"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Application Questions -->
+    <div data-automation-id="applyFlowPrimaryQuestionsPage" data-flow-step="3" id="flow-step-3" hidden>
+      <h2 data-automation-id="pageHeader">Application Questions</h2>
+      <div data-automation-id="formField-workAuthorization">
+        <label for="primaryQuestionnaire--workAuthorization">Are you legally authorized to work in the country in which the job is located?<abbr title="required">*</abbr></label>
+        <div><button type="button" id="primaryQuestionnaire--workAuthorization" aria-haspopup="listbox" aria-expanded="false" data-automation-id="applicationQuestion-workAuthorization" data-listbox="yesNo" aria-label="Are you legally authorized to work in the country in which the job is located? Select One Required" value="">Select One</button></div>
+      </div>
+      <div data-automation-id="formField-sponsorship">
+        <label for="primaryQuestionnaire--sponsorship">Will you now or in the future require sponsorship for employment visa status?<abbr title="required">*</abbr></label>
+        <div><button type="button" id="primaryQuestionnaire--sponsorship" aria-haspopup="listbox" aria-expanded="false" data-automation-id="applicationQuestion-sponsorship" data-listbox="yesNo" aria-label="Will you now or in the future require sponsorship for employment visa status? Select One Required" value="">Select One</button></div>
+      </div>
+      <div data-automation-id="formField-whyInterested">
+        <label for="primaryQuestionnaire--whyInterested">Please describe why you are interested in this role.<abbr title="required">*</abbr></label>
+        <div><textarea id="primaryQuestionnaire--whyInterested" data-automation-id="applicationQuestion-whyInterested" aria-required="true" maxlength="2000" rows="5"></textarea></div>
+      </div>
+    </div>
+
+    <!-- Step 4: Voluntary Disclosures -->
+    <div data-automation-id="applyFlowVoluntaryDisclosuresPage" data-flow-step="4" id="flow-step-4" hidden>
+      <h2 data-automation-id="pageHeader">Voluntary Disclosures</h2>
+      <p>Fixture Corp is an equal opportunity employer. Providing the information below is voluntary and will not affect your application.</p>
+      <div data-automation-id="formField-gender">
+        <label for="personalInfoUS--gender">Gender</label>
+        <div><button type="button" id="personalInfoUS--gender" aria-haspopup="listbox" aria-expanded="false" data-automation-id="gender" data-listbox="gender" aria-label="Gender Select One" value="">Select One</button></div>
+      </div>
+      <div data-automation-id="formField-ethnicity">
+        <label for="personalInfoUS--ethnicity">Please select the ethnicity which most clearly describes how you identify</label>
+        <div><button type="button" id="personalInfoUS--ethnicity" aria-haspopup="listbox" aria-expanded="false" data-automation-id="ethnicityDropdown" data-listbox="ethnicity" aria-label="Please select the ethnicity which most clearly describes how you identify Select One" value="">Select One</button></div>
+      </div>
+      <div data-automation-id="formField-veteranStatus">
+        <label for="personalInfoUS--veteranStatus">Please select the veteran status which most accurately describes your relationship with the military</label>
+        <div><button type="button" id="personalInfoUS--veteranStatus" aria-haspopup="listbox" aria-expanded="false" data-automation-id="veteranStatus" data-listbox="veteran" aria-label="Please select the veteran status which most accurately describes your relationship with the military Select One" value="">Select One</button></div>
+      </div>
+      <h3>Terms and Conditions</h3>
+      <p>I certify that the information provided in this application is true and complete to the best of my knowledge.</p>
+      <div data-automation-id="formField-agreementCheckbox">
+        <div class="wd-check">
+          <input type="checkbox" id="termsAndConditions--acceptTermsAndAgreements" data-automation-id="agreementCheckbox" aria-required="true">
+          <label for="termsAndConditions--acceptTermsAndAgreements">Yes, I have read and consent to the terms and conditions<abbr title="required">*</abbr></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Self Identify -->
+    <div data-automation-id="applyFlowSelfIdentifyPage" data-flow-step="5" id="flow-step-5" hidden>
+      <h2 data-automation-id="pageHeader">Self Identify</h2>
+      <h3>Voluntary Self-Identification of Disability</h3>
+      <p>Form CC-305 (fixture copy). We are a federal contractor or subcontractor. The law requires us to provide equal employment opportunity to qualified people with disabilities. To help us measure how well we are doing, we are asking you to tell us if you have a disability or if you ever had a disability. Completing this form is voluntary.</p>
+      <div data-automation-id="formField-name">
+        <label for="selfIdentifiedDisabilityData--name">Name<abbr title="required">*</abbr></label>
+        <div><input type="text" id="selfIdentifiedDisabilityData--name" data-automation-id="name" aria-required="true"></div>
+      </div>
+      <div data-automation-id="formField-dateSignedOn">
+        <label for="selfIdentifiedDisabilityData--dateSignedOn">Date<abbr title="required">*</abbr></label>
+        <div data-automation-id="dateInputWrapper"><input type="text" id="selfIdentifiedDisabilityData--dateSignedOn" data-automation-id="dateInput" placeholder="MM/DD/YYYY" aria-required="true" autocomplete="off"></div>
+      </div>
+      <fieldset data-automation-id="formField-disabilityStatus" id="disabilityStatus-group">
+        <legend>Please check one of the boxes below:<abbr title="required">*</abbr></legend>
+        <div class="wd-check"><input type="checkbox" name="disabilityStatus" id="disabilityStatus-yes" value="Yes, I have a disability, or have had one in the past"><label for="disabilityStatus-yes">Yes, I have a disability, or have had one in the past</label></div>
+        <div class="wd-check"><input type="checkbox" name="disabilityStatus" id="disabilityStatus-no" value="No, I do not have a disability and have not had one in the past"><label for="disabilityStatus-no">No, I do not have a disability and have not had one in the past</label></div>
+        <div class="wd-check"><input type="checkbox" name="disabilityStatus" id="disabilityStatus-noAnswer" value="I do not want to answer"><label for="disabilityStatus-noAnswer">I do not want to answer</label></div>
+      </fieldset>
+    </div>
+
+    <!-- Step 6: Review -->
+    <div data-automation-id="applyFlowReviewPage" data-flow-step="6" id="flow-step-6" hidden>
+      <h2 data-automation-id="pageHeader">Review</h2>
+      <div id="review-content" data-automation-id="reviewContent"></div>
+    </div>
+
+    <div class="wd-nav" data-automation-id="applyFlowNavigation">
+      <button type="button" class="wd-secondary" data-automation-id="bottom-navigation-previous-button" id="nav-back" hidden>Back</button>
+      <button type="button" class="wd-primary" data-automation-id="bottom-navigation-next-button" id="nav-next">Save and Continue</button>
+    </div>
+  </section>
+
+  <!-- ===================== CONFIRMATION ===================== -->
+  <section class="wd-page" id="step-confirmation" data-automation-id="congratulationsPopup" role="status" hidden>
+    <h2 data-automation-id="pageHeader">Application Submitted</h2>
+    <p data-automation-id="congratulationsMessage">Congratulations! Your application has been submitted.</p>
+    <p>You applied for Software Engineer II (R-12345) at Fixture Corp.</p>
+  </section>
+</div>
+
+<script src="../kit.js"></script>
+<script src="workday.js"></script>
+</body>
+</html>

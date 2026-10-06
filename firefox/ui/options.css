@@ -1,0 +1,14 @@
+body.options { padding: 16px; }
+.o-main { max-width: 640px; margin: 0 auto; }
+.o-main h1 { font-size: 20px; }
+.o-field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
+.o-field label { font-weight: 600; }
+.o-field input { width: 100%; }
+.o-token { display: flex; gap: 6px; }
+.o-token input { flex: 1; font-family: var(--mono); }
+.o-result { margin-top: 10px; }
+.o-result .ok { color: var(--success); }
+.o-result .bad { color: var(--danger); }
+.o-result div { margin: 2px 0; }
+.o-help { margin-top: 14px; }
+.o-help ol { margin: 0; padding-left: 20px; }

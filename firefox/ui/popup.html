@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ApplyPilot</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="popup">
+  <header class="p-header">
+    <div id="header" aria-live="polite"><span class="control control-STOPPED">AUTOPILOT: …</span></div>
+    <button type="button" id="settings-btn" class="btn btn-xs" title="Settings">Settings</button>
+  </header>
+  <main>
+    <div id="message" class="p-message" role="status" aria-live="polite"></div>
+    <div id="state"><div class="loading">Connecting to backend…</div></div>
+    <div id="config"></div>
+    <div id="attention"></div>
+    <section id="workers" class="section"></section>
+    <section id="counters" class="section"></section>
+    <section id="controls" class="section"></section>
+  </main>
+  <script src="api.js"></script>
+  <script src="ui-common.js"></script>
+  <script src="widgets.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reCAPTCHA</title>
+<style>
+  body { margin: 0; font-family: Roboto, Arial, sans-serif; }
+  .banner { font: bold 9px sans-serif; color: #664d03; background: #fff3cd; padding: 1px 4px; }
+  .rc-anchor { width: 300px; height: 62px; border: 1px solid #d3d3d3; background: #f9f9f9; border-radius: 3px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box; }
+  .rc-anchor label { font-size: 14px; margin-left: 10px; }
+  #recaptcha-anchor { width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" class="banner">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<div class="rc-anchor rc-anchor-normal">
+  <input type="checkbox" id="recaptcha-anchor" class="recaptcha-checkbox" aria-checked="false">
+  <label for="recaptcha-anchor" id="recaptcha-anchor-label">I'm not a robot</label>
+</div>
+<script>
+  document.getElementById("recaptcha-anchor").addEventListener("change", function () {
+    this.setAttribute("aria-checked", this.checked ? "true" : "false");
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Copy to config/question_catalog.yaml to add or override deterministic question mappings.
+# Entries here are checked BEFORE the built-in catalog (src/applypilot/data/question_catalog.yaml).
+# See the built-in file header for every supported key.
+- id: hackathon_count
+  qclass: FACTUAL
+  label: ['how many hackathons']
+  fact: candidate.experience.hackathons      # add `hackathons: 3` under experience in candidate.yaml
+- id: preferred_office
+  qclass: PREFERENCE
+  label: ['which office would you prefer', 'preferred office']
+  pref: preferences.application.desired_locations

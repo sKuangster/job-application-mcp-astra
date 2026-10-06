@@ -1,0 +1,145 @@
+# =====================================================================================
+# preferences.yaml — YOUR CHOICES (not facts): defaults, EEO answers, resume mapping,
+# eligibility policies, accounts, research sources. null = not configured.
+# Real values can live in config/preferences.local.yaml (git-ignored, merged over this).
+# System tuning (concurrency, timeouts, auto-submit) lives in config/settings.yaml.
+# =====================================================================================
+
+# Where jobs come from. listings.json in this repository is parsed (README as fallback).
+source:
+  repository: https://github.com/SimplifyJobs/Summer2027-Internships
+  branch: dev                 # The repository's default branch.
+  path: README.md             # Fallback file if listings.json is unavailable.
+
+application:
+  # Optional FILTERS (regexes on the job title / exact company names). Empty = apply broadly.
+  desired_roles: []           # e.g. ['software', 'machine learning', 'data'] — only titles matching one are considered.
+  excluded_roles: []          # e.g. ['sales', 'marketing']
+  excluded_companies: []      # Exact company names to never apply to.
+  desired_locations: []       # Used as context for "which office do you prefer?" questions.
+  willing_to_relocate: null   # Answers "Are you willing to relocate?"
+  willing_to_travel: null
+  available_start_date: null  # "2027-05-26" — answers start-date questions.
+  expected_salary: null       # Text or number used for salary-expectation questions, e.g. "Open / market rate".
+  salary_currency: null
+  work_country: null          # Default country (ISO) when a job spans several and the question names none.
+  contact_source: null        # Answer to "How did you hear about us?", e.g. "Simplify" or "Online job board".
+  referred: null              # Answer to "Were you referred by an employee?" (true/false).
+  phone_device_type: Mobile   # Workday "Phone device type".
+  sms_opt_in: false           # Consent to recruiting text messages.
+  # Consents — set to true only if you agree to them being ticked on your behalf:
+  accept_privacy_policy: null # Privacy notice / data-processing acknowledgements.
+  accept_terms: null          # Generic "I acknowledge / I agree to the terms" checkboxes (incl. account terms).
+  certify_truthfulness: null  # "I certify the information provided is accurate".
+  consent_background_check: null
+  # Fallback answers keyed by question-catalog id when the field above is null, e.g. {how_heard: "LinkedIn"}.
+  defaults: {}
+
+# EEO / voluntary self-identification. NEVER inferred. Use the wording you want matched
+# (synonyms like Man/Male are handled). Use "decline" to always pick "I don't wish to answer".
+eeo:
+  gender: null
+  race: null
+  ethnicity: null
+  hispanic_latino: null       # true / false / "decline"
+  veteran_status: null        # e.g. "I am not a protected veteran"
+  disability_status: null     # e.g. "No, I do not have a disability"
+  pronouns: null
+  sexual_orientation: null
+  transgender: null
+  # When a value above is null: decline = choose the "prefer not to say" option (default),
+  # skip = leave optional questions blank, needs_user = ask you when the question is required.
+  optional_unknown: decline
+
+resumes:
+  default: null               # Exact filename in resumes/ used when no category-specific resume fits.
+  mappings: {}                # category → exact filename; overrides filename inference, e.g. {ml: "Jane_Doe_ML.pdf"}
+  # Ordered keyword rules (matched against the job title, then Simplify's category). First match wins.
+  categories:
+    quant: ['quantitative', 'quant ', 'quant-', 'trading', 'trader']
+    ml: ['machine learning', 'deep learning', 'artificial intelligence', ' ai ', ' ml ', 'ai/ml', 'computer vision', 'nlp', 'llm']
+    data: ['data scien', 'data analy', 'data engineer', 'analytics', 'business intelligence']
+    hardware: ['hardware', 'electrical', 'embedded', 'firmware', 'fpga', 'asic']
+    product: ['product manager', 'product management', 'associate product']
+    swe: ['software', 'developer', 'backend', 'frontend', 'full stack', 'fullstack', 'platform', 'infrastructure', 'engineer']
+  # Filename tokens that identify each category's resume (resume_ml.pdf, Jane_Doe_SWE.pdf, ...).
+  filename_aliases:
+    quant: ['quant', 'trading']
+    ml: ['ml', 'ai', 'machine_learning']
+    data: ['data', 'analytics', 'ds']
+    hardware: ['hardware', 'hw', 'embedded', 'firmware']
+    product: ['product', 'pm']
+    swe: ['swe', 'software', 'sde', 'developer']
+
+research:
+  cache_ttl_seconds: null     # Override settings.yaml research.cache_ttl_seconds.
+  max_pages: null
+  # Extra official sources per company: {"Acme": [{url: "https://acme.com/values", official: true}]}
+  company_sources: {}
+
+accounts:
+  create_accounts: true       # Create ATS accounts automatically when a site requires one.
+  # Credentials come from environment variables (.env), never from this file:
+  email_env: APPLYPILOT_ACCOUNT_EMAIL        # falls back to candidate identity.email
+  password_env: APPLYPILOT_ACCOUNT_PASSWORD
+  # Per-domain overrides (env var NAMES): {"myworkdayjobs.com": {password_env: WORKDAY_PASSWORD}}
+  domains: {}
+
+answer_memory:
+  fuzzy_threshold: 0.93       # Similarity needed to reuse a previous non-factual answer.
+
+# ---------------------------------------------------------------------------------------
+# ELIGIBILITY RULES — structural restrictions only (data, not code).
+# Built-in rules (config: src/applypilot/data/default_rules.yaml) already cover Simplify's
+# citizenship/sponsorship/degree metadata, graduation windows and high-school-only programs.
+# A rule applies when ALL its triggers match (regex `patterns` and/or listing `metadata_key`),
+# then compares ONE candidate fact. Skills, "preferred" qualifications and years of
+# experience must never be rules. Unknown facts never skip a job (settings: eligibility).
+# operators: equals, not_equals, in, contains, before, after, between, truthy, candidate_in_metadata
+# Optional: country: US (only for jobs located there), mode: review (ask Astra), enabled: false.
+# ---------------------------------------------------------------------------------------
+eligibility_rules:
+  - id: phd_only
+    patterns: ['(?i)\b(?:ph\.?d\.?|doctoral)\s+(?:students?|candidates?)\s+only\b', '(?i)\bmust be (?:currently )?(?:enrolled in|pursuing) (?:a )?(?:ph\.?d\.?|doctoral)']
+    candidate_path: candidate.education.degree_level
+    operator: equals
+    expected: phd
+    explanation: This role explicitly requires doctoral enrollment.
+  - id: masters_only
+    patterns: ['(?i)\bmaster.?s?\s+(?:students?|candidates?)\s+only\b', '(?i)\bmust be (?:currently )?(?:enrolled in|pursuing) (?:a )?master']
+    candidate_path: candidate.education.degree_level
+    operator: in
+    expected: [master, mba]
+    explanation: This role explicitly requires master's enrollment.
+  - id: enrolled_required
+    patterns: ['(?i)\bmust be (?:currently )?enrolled\b', '(?i)\bcurrent (?:university|college) enrollment (?:is )?required\b']
+    candidate_path: candidate.education.currently_enrolled
+    operator: equals
+    expected: true
+    explanation: Current university enrollment is mandatory.
+  - id: us_citizenship_required
+    patterns: ['(?i)\b(?:u\.?s\.?|united states) citizenship (?:is )?required\b', '(?i)\bmust be (?:a )?(?:u\.?s\.?|united states) citizen\b']
+    candidate_path: candidate.work_authorization.US.citizen
+    operator: equals
+    expected: true
+    explanation: US citizenship is mandatory.
+  - id: us_authorization_required
+    patterns: ['(?i)\bmust be (?:legally )?authorized to work in (?:the )?(?:united states|u\.?s\.?)\b']
+    candidate_path: candidate.work_authorization.US.authorized
+    operator: equals
+    expected: true
+    explanation: Existing US work authorization is mandatory.
+  - id: no_sponsorship
+    patterns: ['(?i)\b(?:cannot|will not|does not|do not|unable to) (?:provide|offer|sponsor) (?:visa |immigration |employment )?sponsorship\b']
+    country: US
+    candidate_path: derived.requires_us_sponsorship
+    operator: equals
+    expected: false
+    explanation: The employer explicitly excludes sponsorship for this role.
+# Example of a custom rule (not active):
+#  - id: must_live_in_canada
+#    patterns: ['(?i)\bmust (?:currently )?reside in canada\b']
+#    candidate_path: candidate.address.country
+#    operator: in
+#    expected: [Canada, CA]
+#    explanation: Canadian residency is mandatory.

@@ -1,0 +1,18 @@
+{
+  "name": "applypilot-firefox",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ApplyPilot Firefox extension: tests, lint, packaging",
+  "scripts": {
+    "test": "node --test tests/js/ && node --test tests/js/ui/",
+    "lint:extension": "web-ext lint --source-dir firefox --ignore-files icons/make_icons.py",
+    "build:extension": "web-ext build --source-dir firefox --artifacts-dir dist --overwrite-dest --ignore-files icons/make_icons.py",
+    "sign:extension": "web-ext sign --source-dir firefox --artifacts-dir dist --channel unlisted --ignore-files icons/make_icons.py",
+    "firefox": "web-ext run --source-dir firefox"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "web-ext": "^8.9.0",
+    "ws": "^8.18.0"
+  }
+}

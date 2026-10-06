@@ -1,0 +1,21 @@
+application:
+  desired_roles: []
+  willing_to_relocate: true
+  willing_to_travel: true
+  available_start_date: "2027-05-24"
+  accept_privacy_policy: true
+  accept_terms: true
+  certify_truthfulness: true
+  contact_source: Simplify
+  referred: false
+  sms_opt_in: false
+  phone_device_type: Mobile
+eeo:
+  gender: null
+  race: null
+  veteran_status: null
+  disability_status: null
+  optional_unknown: decline
+resumes:
+  default: resume_swe.pdf
+  mappings: {}

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixture Labs Application - Research Software Engineer</title>
+<style>
+  body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #222; background: #fafaf7; }
+  main { max-width: 720px; margin: 24px auto; padding: 0 20px 40px; }
+  h1 { font-size: 28px; }
+  .intro { color: #555; }
+  .steps { list-style: none; padding: 0; display: flex; gap: 14px; font-size: 13px; color: #888; }
+  .steps li.current { color: #222; font-weight: bold; }
+  section.step { background: #fff; border: 1px solid #ddd; padding: 18px 24px; margin: 16px 0; }
+  .row { margin: 12px 0; }
+  .row > label { display: block; margin-bottom: 4px; }
+  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=month], select, textarea { padding: 6px; font-size: 15px; width: 300px; max-width: 100%; }
+  textarea { width: 100%; box-sizing: border-box; }
+  fieldset { border: 1px solid #ddd; padding: 10px 14px; }
+  .error-text { color: #b00020; font-size: 13px; margin-left: 6px; }
+  [aria-invalid=true] { outline: 2px solid #b00020; }
+  .actions { margin-top: 18px; display: flex; gap: 10px; }
+  .actions button { padding: 8px 20px; font-size: 15px; }
+  .counter { font-size: 12px; color: #666; text-align: right; }
+  dl.summary dt { font-weight: bold; margin-top: 8px; }
+  dl.summary dd { margin-left: 0; }
+</style>
+</head>
+<body>
+<div data-fixture-banner role="note" style="background:#fff3cd;color:#664d03;border:2px solid #ffcd39;padding:6px 10px;font:bold 14px sans-serif;text-align:center">LOCAL TEST FIXTURE — NOT A REAL APPLICATION</div>
+<main id="app" data-fixture-root>
+  <h1>Fixture Labs Application</h1>
+  <p class="intro">Research Software Engineer &middot; Fixture Labs &middot; Boston, MA (hybrid)</p>
+  <p class="intro">Fixture Labs builds open scientific computing tools. In this role you will design data pipelines and simulation software used by research teams around the world. Please complete the three short sections below and review your answers before submitting.</p>
+  <ol class="steps" id="step-indicator">
+    <li data-for="1" class="current">1. Personal Information</li>
+    <li data-for="2">2. Education</li>
+    <li data-for="3">3. Skills &amp; Consent</li>
+    <li data-for="4">4. Review</li>
+  </ol>
+
+  <form id="custom-form" method="post" action="#" novalidate>
+    <section class="step" id="step-1" data-step="1">
+      <h2>Personal Information</h2>
+      <div class="row">
+        <label for="first_name">First Name *</label>
+        <input type="text" id="first_name" name="first_name" required autocomplete="given-name">
+      </div>
+      <div class="row">
+        <label for="last_name">Last Name *</label>
+        <input type="text" id="last_name" name="last_name" required autocomplete="family-name">
+      </div>
+      <div class="row">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+      </div>
+      <div class="row">
+        <label for="phone">Phone *</label>
+        <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="555-555-5555" pattern="\+?1?[ \-]?\(?\d{3}\)?[ \-.]?\d{3}[ \-.]?\d{4}">
+      </div>
+      <div class="row">
+        <label for="years_experience">Years of professional experience *</label>
+        <input type="number" id="years_experience" name="years_experience" required min="0" max="50" step="1">
+      </div>
+      <div class="actions">
+        <button type="button" class="next" data-next="2">Next</button>
+      </div>
+    </section>
+
+    <section class="step" id="step-2" data-step="2" hidden>
+      <h2>Education</h2>
+      <div class="row">
+        <label for="degree">Highest degree *</label>
+        <select id="degree" name="degree" required>
+          <option value="">-- Select --</option>
+          <option value="High School">High School</option>
+          <option value="Bachelor's">Bachelor's</option>
+          <option value="Master's">Master's</option>
+          <option value="PhD">PhD</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="graduation_date">Graduation date *</label>
+        <input type="date" id="graduation_date" name="graduation_date" required>
+      </div>
+      <div class="row">
+        <label for="start_month">Available start month</label>
+        <input type="month" id="start_month" name="start_month">
+      </div>
+      <div class="row">
+        <label for="field_of_study">Field of study</label>
+        <input type="text" id="field_of_study" name="field_of_study">
+      </div>
+      <fieldset id="honors-group">
+        <legend>Did you graduate with honors? *</legend>
+        <input type="radio" id="honors_yes" name="honors" value="Yes" required><label for="honors_yes">Yes</label>
+        <input type="radio" id="honors_no" name="honors" value="No" required><label for="honors_no">No</label>
+      </fieldset>
+      <div class="actions">
+        <button type="button" class="back" data-back="1">Back</button>
+        <button type="button" class="next" data-next="3">Next</button>
+      </div>
+    </section>
+
+    <section class="step" id="step-3" data-step="3" hidden>
+      <h2>Skills &amp; Consent</h2>
+      <fieldset id="languages-group">
+        <legend>Programming languages *</legend>
+        <input type="checkbox" id="lang_python" name="languages" value="Python"><label for="lang_python">Python</label>
+        <input type="checkbox" id="lang_javascript" name="languages" value="JavaScript"><label for="lang_javascript">JavaScript</label>
+        <input type="checkbox" id="lang_rust" name="languages" value="Rust"><label for="lang_rust">Rust</label>
+        <input type="checkbox" id="lang_go" name="languages" value="Go"><label for="lang_go">Go</label>
+        <input type="checkbox" id="lang_cpp" name="languages" value="C++"><label for="lang_cpp">C++</label>
+      </fieldset>
+      <div class="row">
+        <label for="cover_letter">Cover letter</label>
+        <textarea id="cover_letter" name="cover_letter" rows="6" maxlength="500"></textarea>
+        <div class="counter" id="cover_letter_counter" aria-live="polite">0/500</div>
+      </div>
+      <div class="row">
+        <input type="checkbox" id="certify" name="certify" value="yes" required>
+        <label for="certify">I certify that the information provided is true *</label>
+      </div>
+      <div class="actions">
+        <button type="button" class="back" data-back="2">Back</button>
+        <button type="button" class="next" data-next="4">Review</button>
+      </div>
+    </section>
+
+    <section class="step" id="step-4" data-step="4" hidden>
+      <h2>Review your application</h2>
+      <dl class="summary" id="review-summary"></dl>
+      <div class="actions">
+        <button type="button" class="back" data-back="3">Back</button>
+        <button type="submit" id="submit-btn">Submit</button>
+      </div>
+    </section>
+  </form>
+</main>
+<script src="../kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.FixtureKit;
+  var form = document.getElementById("custom-form");
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function errId(key) { return key + "-error"; }
+
+  function setError(el, anchor, key, msg) {
+    var id = errId(key);
+    var span = document.getElementById(id);
+    if (!span) {
+      span = document.createElement("span");
+      span.id = id;
+      span.className = "error-text";
+      span.setAttribute("role", "alert");
+      anchor.parentNode.insertBefore(span, anchor.nextSibling);
+    }
+    span.textContent = msg;
+    var targets = el.length !== undefined && !el.tagName ? el : [el];
+    Array.prototype.forEach.call(targets, function (t) {
+      t.setAttribute("aria-invalid", "true");
+      t.setAttribute("aria-describedby", id);
+    });
+  }
+
+  function clearStepErrors(step) {
+    Array.prototype.forEach.call(step.querySelectorAll(".error-text"), function (n) { n.remove(); });
+    Array.prototype.forEach.call(step.querySelectorAll("[aria-invalid]"), function (n) {
+      n.removeAttribute("aria-invalid");
+      n.removeAttribute("aria-describedby");
+    });
+  }
+
+  function val(id) { return String(document.getElementById(id).value || "").trim(); }
+
+  function validateStep(n) {
+    var step = document.getElementById("step-" + n);
+    clearStepErrors(step);
+    var bad = [];
+    function req(id, msg) {
+      var el = document.getElementById(id);
+      if (!val(id)) { setError(el, el, id, msg || "This field is required."); bad.push(el); return false; }
+      return true;
+    }
+    if (n === 1) {
+      req("first_name"); req("last_name");
+      if (req("email") && !EMAIL_RE.test(val("email"))) {
+        setError(document.getElementById("email"), document.getElementById("email"), "email", "Please enter a valid email address.");
+        bad.push(document.getElementById("email"));
+      }
+      if (req("phone")) {
+        var digits = val("phone").replace(/\D/g, "");
+        if (digits.length === 11 && digits.charAt(0) === "1") digits = digits.slice(1);
+        if (digits.length !== 10 || /[^\d\s()+.-]/.test(val("phone"))) {
+          setError(document.getElementById("phone"), document.getElementById("phone"), "phone", "Please enter a valid phone number (e.g. 555-555-5555).");
+          bad.push(document.getElementById("phone"));
+        }
+      }
+      if (req("years_experience")) {
+        var y = Number(val("years_experience"));
+        if (!isFinite(y) || y < 0 || y > 50) {
+          setError(document.getElementById("years_experience"), document.getElementById("years_experience"), "years_experience", "Please enter a number between 0 and 50.");
+          bad.push(document.getElementById("years_experience"));
+        }
+      }
+    } else if (n === 2) {
+      req("degree"); req("graduation_date");
+      var honors = form.querySelectorAll("input[name=honors]");
+      if (!form.querySelector("input[name=honors]:checked")) {
+        setError(honors, document.getElementById("honors-group").lastElementChild, "honors", "Please select an option.");
+        bad.push(honors[0]);
+      }
+    } else if (n === 3) {
+      var langs = form.querySelectorAll("input[name=languages]");
+      if (!form.querySelector("input[name=languages]:checked")) {
+        setError(langs, document.getElementById("languages-group").lastElementChild, "languages", "Please select at least one language.");
+        bad.push(langs[0]);
+      }
+      var certify = document.getElementById("certify");
+      if (!certify.checked) {
+        setError(certify, certify.nextElementSibling, "certify", "This field is required.");
+        bad.push(certify);
+      }
+    }
+    if (bad.length) { try { bad[0].focus(); } catch (e) { /* ignore */ } }
+    return bad.length === 0;
+  }
+
+  function show(n) {
+    for (var i = 1; i <= 4; i++) document.getElementById("step-" + i).hidden = i !== n;
+    Array.prototype.forEach.call(document.querySelectorAll("#step-indicator li"), function (li) {
+      li.className = Number(li.getAttribute("data-for")) === n ? "current" : "";
+    });
+    if (n === 4) renderReview();
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function gather() {
+    var d = K.collect(form);
+    if (!Array.isArray(d.languages)) d.languages = d.languages ? [d.languages] : [];
+    return d;
+  }
+
+  function renderReview() {
+    var d = gather();
+    var rows = [
+      ["First Name", d.first_name], ["Last Name", d.last_name], ["Email", d.email], ["Phone", d.phone],
+      ["Years of professional experience", d.years_experience], ["Highest degree", d.degree],
+      ["Graduation date", d.graduation_date], ["Available start month", d.start_month || "—"],
+      ["Field of study", d.field_of_study || "—"], ["Did you graduate with honors?", d.honors],
+      ["Programming languages", d.languages.join(", ")], ["Cover letter", d.cover_letter || "—"],
+      ["Certification", d.certify ? "Certified" : "Not certified"]
+    ];
+    document.getElementById("review-summary").innerHTML = rows.map(function (r) {
+      return "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1] == null ? "" : r[1]) + "</dd>";
+    }).join("");
+  }
+
+  form.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("button") : null;
+    if (!b) return;
+    if (b.hasAttribute("data-next")) {
+      var target = Number(b.getAttribute("data-next"));
+      if (validateStep(target - 1)) show(target);
+    } else if (b.hasAttribute("data-back")) {
+      show(Number(b.getAttribute("data-back")));
+    }
+  });
+
+  // live clearing of errors
+  form.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.id === "cover_letter") {
+      if (t.value.length > 500) t.value = t.value.slice(0, 500);
+      document.getElementById("cover_letter_counter").textContent = t.value.length + "/500";
+    }
+  });
+  form.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.getAttribute("aria-invalid") !== "true") return;
+    if (t.type === "radio" || t.type === "checkbox") {
+      var key = t.name === "languages" || t.name === "honors" ? t.name : t.id;
+      var span = document.getElementById(errId(key));
+      if (span) span.remove();
+      Array.prototype.forEach.call(form.querySelectorAll('[aria-describedby="' + errId(key) + '"]'), function (n) {
+        n.removeAttribute("aria-invalid"); n.removeAttribute("aria-describedby");
+      });
+    }
+  });
+
+  var submitted = false;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (submitted) return;
+    if (document.getElementById("step-4").hidden) return;
+    for (var n = 1; n <= 3; n++) {
+      if (!validateStep(n)) { show(n); return; }
+    }
+    submitted = true;
+    document.getElementById("submit-btn").disabled = true;
+    K.submit("custom", gather(), {
+      confirm: function () {
+        document.getElementById("app").innerHTML =
+          '<div class="confirmation"><h1>Application submitted</h1><p>Thank you! We have received your application.</p></div>';
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
