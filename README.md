@@ -186,7 +186,7 @@ Clients that support HTTP with headers can use `http://127.0.0.1:8765/mcp` with
 | `get_candidate_context` | Profile, templates, preferences |
 | `save_company_research` | Cache research with sources and timestamps |
 | `search_applications`, `get_application_log` | History and the exact audit trail |
-| `application_action` | `resume` / `retry` / `skip` / `submit` / `open` / `confirm_submitted` |
+| `application_action` | `resume` / `retry` / `retry_captcha` / `skip` / `submit` / `open` / `confirm_submitted` |
 | `provide_answer` | Supply a fact **the user told you** for a NEEDS_USER question |
 | `apply_to_url` | Queue one specific posting |
 | `inspect_page`, `get_page_screenshot`, `perform_page_action` | Bounded visual/DOM fallback on parked applications |
@@ -249,12 +249,19 @@ their listing data materially changes. Submitted or skipped jobs are never recon
 ### CAPTCHA workflow
 
 ApplyPilot **never** solves or bypasses CAPTCHAs. When a visible challenge appears (invisible
-reCAPTCHA badges are ignored), only that application moves to **NEEDS_USER**. You get a
-notification and the badge turns red; other workers keep going. Open the application (dashboard →
-**Open in Firefox**), complete the challenge, and either press **Resume** or just wait: the watcher
-notices the challenge is gone and resumes automatically. If the CAPTCHA appeared **after** the submit
-click, ApplyPilot never clicks Submit again: solve it, click the site's Submit button yourself if the
-form is still shown, then press **Resume** so the confirmation is recorded (or **Mark submitted**).
+reCAPTCHA badges are ignored), only that application moves to **WAITING_FOR_CAPTCHA**. Its state,
+page evidence and resume point are persisted, its worker lease is released, and other workers keep
+going. A Windows/Firefox notification identifies the company and role; clicking it focuses the owned
+application window when possible. Complete only the challenge. The watcher performs periodic
+read-only DOM scans, verifies that a recognizable application page remains, and resumes the worker
+automatically—there is no Resume button to press.
+
+After the challenge clears, ApplyPilot re-scans and revalidates the page. A CAPTCHA that demonstrably
+blocked the first submit click (same final form, URL, fingerprint and Submit button) causes that
+reserved attempt to be aborted, followed by the normal validation and submission gate. If delivery
+of the earlier click is uncertain, ApplyPilot only inspects for confirmation and never clicks Submit
+again. CAPTCHA completion itself never grants submission approval. Long waits raise a reminder but
+remain recoverable rather than becoming FAILED.
 
 ### Other interventions
 

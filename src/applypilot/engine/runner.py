@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import logging
 import mimetypes
 import random
@@ -115,7 +116,7 @@ class ApplicationRunner:
         try:
             for _ in range(MAX_STEPS):
                 state = self.app["state"]
-                if state in TERMINAL or state in (S.NEEDS_USER, S.READY_TO_SUBMIT):
+                if state in TERMINAL or state in (S.WAITING_FOR_CAPTCHA, S.NEEDS_USER, S.READY_TO_SUBMIT):
                     await self._finish_terminal()
                     return
                 if self.e.should_yield() and state != S.SUBMITTING:
@@ -165,6 +166,48 @@ class ApplicationRunner:
         self.e.notify_attention(self.app, info)
         return Stop(reason=f"needs user: {nu.kind}")
 
+    async def wait_for_captcha(self, snap: PageSnapshot, *, reason: str, resume_state: str,
+                               phase: str, safe_to_retry_submit: bool = False) -> Stop:
+        """Persist and park a CAPTCHA without retaining a worker lease.
+
+        Only metadata needed for recovery is retained. The watcher subsequently issues
+        read-only DOM scans; it never sends an action into a challenge frame or widget.
+        """
+        now = time.time()
+        screenshot = await self.screenshot("captcha-detected")
+        previous = dict(self.data.get("captcha_wait") or {})
+        occurrence = max(int(previous.get("occurrence") or 0), len(self.data.get("captcha_history") or [])) + 1
+        wait = {
+            "detected_at": now,
+            "last_checked_at": now,
+            "check_count": 0,
+            "occurrence": occurrence,
+            "resume_state": resume_state,
+            "phase": phase,
+            "page_url": redact_url(snap.url),
+            "domain": domain_key(snap.url),
+            "page_fingerprint": snap.fingerprint,
+            "challenge_type": snap.captcha.kind or "unknown",
+            "detail": truncate(snap.captcha.detail or "challenge page", 160),
+            "screenshot": screenshot,
+            "safe_to_retry_submit": safe_to_retry_submit,
+            "navigation_observed": False,
+        }
+        info = {
+            "kind": "captcha", "reason": reason,
+            "instructions": "Complete the human-verification challenge in Firefox. ApplyPilot will detect completion "
+                            "and resume automatically; do not submit the application manually.",
+            "fields": [], "missing": [], "since": now, "resume_state": resume_state,
+        }
+        self.go(S.WAITING_FOR_CAPTCHA, reason, data={"captcha_wait": wait, "needs_user": info})
+        self.event("captcha", "captcha_detected", reason, wait, level="WARNING")
+        self.e.notify_attention(self.app, info)
+        # Bring the correct real Firefox window forward. Failure is harmless: the
+        # notification/dashboard Open action can focus it later.
+        with contextlib.suppress(BrowserError, BridgeUnavailable):
+            await self.cmd("focus", {}, timeout=10, audit=False)
+        return Stop(reason="waiting for human CAPTCHA completion")
+
     async def _finish_terminal(self) -> None:
         state = self.app["state"]
         policy = self.cfg.settings.browser.close_tab_on
@@ -204,6 +247,17 @@ class ApplicationRunner:
         if any(snap.url.startswith(u.split("?")[0]) for u in self.secret_urls):
             snap = snap.model_copy(update={"url": _origin(snap.url)})
         self.snap = snap
+        pending = dict(self.data.get("captcha_resume_pending") or {})
+        if pending and not (snap.captcha.present and snap.captcha.interactive) and snap.page_kind != "captcha":
+            continued_at = time.time()
+            completed = {
+                **pending, "continued_at": continued_at, "continued_state": self.app["state"],
+                "continued_url": redact_url(snap.url), "continued_page_kind": snap.page_kind,
+                "successfully_continued": True,
+            }
+            history = (list(self.data.get("captcha_history") or []) + [completed])[-20:]
+            self.save(data={"captcha_resume_pending": None, "captcha_wait": None, "captcha_history": history})
+            self.event("captcha", "captcha_application_continued", "Application continued after CAPTCHA", completed)
         if record:
             pages = list(self.data.get("pages") or [])
             if not pages or pages[-1].get("fingerprint") != snap.fingerprint:
@@ -415,9 +469,9 @@ class ApplicationRunner:
         snap = await self.scan()
         kind = snap.page_kind
         if snap.captcha.present and snap.captcha.interactive or kind == "captcha":
-            raise NeedsUser("captcha", f"CAPTCHA ({snap.captcha.kind or 'challenge'}) on {truncate(snap.title, 60)}",
-                            "Open the application window, complete the CAPTCHA (do not submit), then press Resume. "
-                            "ApplyPilot resumes automatically when the challenge disappears.", resume_state=S.APPLYING)
+            return await self.wait_for_captcha(
+                snap, reason=f"CAPTCHA ({snap.captcha.kind or 'challenge'}) on {truncate(snap.title, 60)}",
+                resume_state=S.APPLYING, phase="application")
         if kind == "confirmation" or snap.confirmation.detected:
             sub = self.db.submission(self.app["id"])
             if sub and sub["status"] in ("SUBMITTING", "SUBMISSION_UNCONFIRMED"):
@@ -867,7 +921,9 @@ class ApplicationRunner:
             self.db.finish_submission(self.app["id"], "ABORTED", {"reason": "submit button vanished before click"},
                                       worker_id=self.worker, token=self.token)
             return S.APPLYING
-        self.save(data={"submit_clicked_at": time.time(), "submit_clicks": int(self.data.get("submit_clicks") or 0) + 1})
+        self.save(data={"submit_clicked_at": time.time(), "submit_clicks": int(self.data.get("submit_clicks") or 0) + 1,
+                        "submit_intent": {"url": redact_url(snap.url), "fingerprint": snap.fingerprint,
+                                          "button_id": submits[0].id, "button_text": submits[0].text}})
         self.event("submission", "submit_clicked", f"Clicked '{submits[0].text}'", {"button": submits[0].text})
         before_step = snap.step.current if snap.step and snap.step.current else None
         new, changed = await self.click_and_wait(submits[0], settle=25)
@@ -885,11 +941,27 @@ class ApplicationRunner:
             self.e.record_domain(self.app, ok=True)
             return self.go(S.SUBMITTED, "confirmation detected", data={"submission_evidence": evidence})
         if snap.captcha.present and snap.captcha.interactive:
-            self.save(data={"submit_blocked_by": "captcha"})
-            raise NeedsUser("captcha", "CAPTCHA appeared after clicking Submit",
-                            "Complete the CAPTCHA in the application window. If the form is still shown afterwards, click "
-                            "its Submit button yourself (ApplyPilot will not click Submit again), then press Resume so "
-                            "ApplyPilot can record the confirmation.", resume_state=S.SUBMITTING)
+            intent = self.data.get("submit_intent") or {}
+            safe_retry = bool(
+                snap.final_buttons()
+                and redact_url(snap.url) == intent.get("url")
+                and snap.fingerprint == intent.get("fingerprint")
+                and not snap.confirmation.detected
+            )
+            resume_state = S.SUBMITTING
+            if safe_retry:
+                # The same final form and button are still present: the site proves the
+                # click was intercepted before delivery. Abort this reserved attempt so
+                # validation and the submission gate run again after the human challenge.
+                self.db.finish_submission(
+                    self.app["id"], "ABORTED",
+                    {**evidence, "reason": "submit click blocked by CAPTCHA before delivery"},
+                    worker_id=self.worker, token=self.token)
+                self.save(data={"submit_clicked_at": None, "submit_blocked_by": "captcha"})
+                resume_state = S.VALIDATING
+            return await self.wait_for_captcha(
+                snap, reason="CAPTCHA appeared at final submission", resume_state=resume_state,
+                phase="submission", safe_to_retry_submit=safe_retry)
         still_form = bool(snap.final_buttons()) or bool(snap.buttons_of("submit"))
         if still_form and (snap.errors or any(f.error for f in snap.fields)):
             # The site rejected the submission → nothing was sent; safe to fix and retry (bounded).

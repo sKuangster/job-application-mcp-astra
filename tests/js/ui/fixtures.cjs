@@ -21,7 +21,7 @@ const status = {
   today: { submitted: 18, skipped: 2, ineligible: 5, needs_user: 1, failed: 3, active: 2 },
   needs_user: [
     { application_id: 'app-099', company: 'Initech ' + XSS, title: 'Backend Developer', reason: 'CAPTCHA detected on submit page',
-      kind: 'captcha', instructions: 'Solve the hCaptcha in the focused tab, then press Resume.', since: NOW - 300 }
+      kind: 'captcha', instructions: 'Solve the hCaptcha in the focused tab; ApplyPilot resumes automatically.', since: NOW - 300 }
   ],
   pending_reasoning: 3,
   bridge: { connected: true, last_seen: NOW - 1, owned_tabs: 2 },

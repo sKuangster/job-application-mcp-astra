@@ -17,6 +17,7 @@
     VERIFYING_EMAIL: 'Verifying email…',
     FILLING: 'Filling application…',
     ANSWERING: 'Waiting for Astra answers…',
+    WAITING_FOR_CAPTCHA: 'Waiting for CAPTCHA…',
     VALIDATING: 'Validating answers…',
     READY_TO_SUBMIT: 'Ready to submit',
     SUBMITTING: 'Submitting…',
@@ -79,10 +80,10 @@
 
   /** Refresh elapsed timers inside `scope` (call every second). */
   function tickElapsed(scope) {
-    var els = scope.querySelectorAll('.w-elapsed[data-since]');
+    var els = scope.querySelectorAll('.w-elapsed[data-since], .att-wait[data-since]');
     for (var i = 0; i < els.length; i++) {
       var s = els[i].getAttribute('data-since');
-      if (s) els[i].textContent = U.elapsedSince(Number(s) || s);
+      if (s) els[i].textContent = (els[i].classList.contains('att-wait') ? 'Waiting ' : '') + U.elapsedSince(Number(s) || s);
     }
   }
 
@@ -110,7 +111,7 @@
   }
 
   var KIND_LABEL = {
-    captcha: 'CAPTCHA', missing_fact: 'Missing facts', login: 'Login required',
+    captcha: 'CAPTCHA REQUIRED', missing_fact: 'Missing facts', login: 'Login required',
     verification: 'Verification', unexpected: 'Unexpected page', review: 'Review needed'
   };
 
@@ -122,7 +123,8 @@
     var el = h('div', { class: 'att-item', dataset: { appId: id || '' } });
     el.appendChild(h('div', { class: 'att-head' },
       h('span', { class: 'att-kind', text: KIND_LABEL[item.kind] || item.kind || 'Attention' }),
-      h('span', { class: 'small muted', text: item.since ? U.fmtAgo(item.since) : '' })));
+      h('span', { class: 'small muted att-wait', dataset: { since: item.since == null ? '' : item.since },
+        text: item.since ? 'Waiting ' + U.elapsedSince(item.since) : '' })));
     el.appendChild(h('div', { class: 'att-title', text: (item.company || 'Unknown company') + (item.title ? ' — ' + item.title : '') }));
     if (item.reason) el.appendChild(h('div', { class: 'att-reason', text: item.reason }));
     if (item.instructions) el.appendChild(h('div', { class: 'att-instr', text: item.instructions }));
@@ -138,11 +140,13 @@
       };
     }
     var row = h('div', { class: 'btn-row' });
-    var bOpen = h('button', { type: 'button', class: 'btn btn-primary', text: 'Open', dataset: { action: 'open' } });
-    var bResume = h('button', { type: 'button', class: 'btn', text: 'Resume', dataset: { action: 'resume' } });
-    var bSkip = h('button', { type: 'button', class: 'btn', text: 'Skip', dataset: { action: 'skip' } });
+    var captcha = item.kind === 'captcha';
+    var bOpen = h('button', { type: 'button', class: 'btn btn-primary', text: captcha ? 'Open application' : 'Open', dataset: { action: 'open' } });
+    var bResume = h('button', { type: 'button', class: 'btn', text: captcha ? 'Retry detection' : 'Resume',
+      dataset: { action: captcha ? 'retry_captcha' : 'resume' } });
+    var bSkip = h('button', { type: 'button', class: 'btn', text: captcha ? 'Skip application' : 'Skip', dataset: { action: 'skip' } });
     bOpen.addEventListener('click', act('open', bOpen));
-    bResume.addEventListener('click', act('resume', bResume));
+    bResume.addEventListener('click', act(captcha ? 'retry_captcha' : 'resume', bResume));
     bSkip.addEventListener('click', act('skip', bSkip));
     row.appendChild(bOpen); row.appendChild(bResume); row.appendChild(bSkip);
     if (handlers.details) {

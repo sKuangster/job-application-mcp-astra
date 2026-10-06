@@ -39,6 +39,8 @@ def test_state_machine_rules():
     assert not can_transition("SUBMITTED", "QUEUED")
     assert not can_transition("SUBMITTING", "SKIPPED")  # never abandon an in-flight submission silently
     assert can_transition("NEEDS_USER", "APPLYING")
+    assert can_transition("SUBMITTING", "WAITING_FOR_CAPTCHA")
+    assert can_transition("WAITING_FOR_CAPTCHA", "SUBMITTING")
     assert all(s in ALLOWED for s in S)
 
 

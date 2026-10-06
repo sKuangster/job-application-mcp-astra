@@ -37,6 +37,9 @@ class Service:
                           "state": app["state"], "reason": info.get("reason") or app.get("state_reason"),
                           "kind": info.get("kind") or ("review" if app["state"] == S.READY_TO_SUBMIT else "unexpected"),
                           "instructions": info.get("instructions"), "since": info.get("since") or app["updated_at"],
+                          "waiting_seconds": max(0, time.time() - (info.get("since") or app["updated_at"])),
+                          "challenge_type": (app["data"].get("captcha_wait") or {}).get("challenge_type"),
+                          "attention_revision": info.get("attention_revision", 0),
                           "fields": info.get("fields") or []})
         counts = self.db.state_counts()
         queue_remaining = sum(v for k, v in counts.items() if k in {
@@ -124,7 +127,8 @@ class Service:
             "application_url": redact_url(row.get("apply_url") or (job or {}).get("apply_url") or row.get("direct_url")),
             "current_url": row.get("current_url"), "created_at": row["created_at"], "updated_at": row["updated_at"],
             "submitted_at": row.get("submitted_at"), "attempts": row.get("attempts"), "worker_id": row.get("worker_id"),
-            "needs_user": data.get("needs_user") if row["state"] in (S.NEEDS_USER, S.READY_TO_SUBMIT, S.SUBMISSION_UNCONFIRMED) else None,
+            "needs_user": data.get("needs_user") if row["state"] in (
+                S.WAITING_FOR_CAPTCHA, S.NEEDS_USER, S.READY_TO_SUBMIT, S.SUBMISSION_UNCONFIRMED) else None,
             "eligibility_decision": (data.get("eligibility") or {}).get("decision"),
             "failure": row["state"] in (S.FAILED, S.NEEDS_USER, S.SUBMISSION_UNCONFIRMED), "method_mix": mix,
             "mode": row.get("mode"), "page_index": row.get("page_index"),
@@ -206,9 +210,19 @@ class Service:
     async def action(self, app_id: str, action: str, note: str | None = None) -> dict[str, Any]:
         action = action.lower()
         if action == "resume":
-            self.e.resume_application(app_id)
+            app = self.db.get_application(app_id)
+            if app["state"] == S.WAITING_FOR_CAPTCHA:
+                await self.e.retry_captcha_detection(app_id, focus=True)
+            else:
+                self.e.resume_application(app_id)
         elif action == "retry":
-            self.e.retry_application(app_id)
+            app = self.db.get_application(app_id)
+            if app["state"] == S.WAITING_FOR_CAPTCHA:
+                await self.e.retry_captcha_detection(app_id, focus=True)
+            else:
+                self.e.retry_application(app_id)
+        elif action == "retry_captcha":
+            await self.e.retry_captcha_detection(app_id, focus=True)
         elif action == "skip":
             self.e.skip_application(app_id, note)
         elif action == "submit":

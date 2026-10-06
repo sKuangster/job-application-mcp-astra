@@ -82,6 +82,9 @@ this known fact" item.
 * **Parking**: an application waiting on Astra is released with `blocked_on='reasoning'` and keeps
   its window. The reasoning service unblocks it when all its items are answered, and housekeeping
   re-checks to close any race.
+* **CAPTCHA parking**: `WAITING_FOR_CAPTCHA` persists the page/resume evidence and releases the
+  worker lease. A separate watcher only scans the DOM; once the challenge is absent and the page is
+  recognizable, it transitions back to the persisted resume state. Long waits remain recoverable.
 * **Domain limits and cool-down** are part of the claim query; consecutive failures cool a domain down.
 * **Tab budget**: new browser work isn't claimed when too many windows are held.
 * **Submissions**: `reserve_submission` atomically fences the lease, rejects existing or equivalent

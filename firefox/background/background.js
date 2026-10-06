@@ -11,7 +11,7 @@
  *
  * Settings (browser.storage.local): backendUrl (default http://127.0.0.1:8765), token, debug.
  */
-/* global browser, ApplyPilotBridgeCore */
+/* global browser, ApplyPilotBridgeCore, ApplyPilotAttention */
 (function () {
   "use strict";
 
@@ -413,15 +413,14 @@
       var title = "ApplyPilot — " + (st.control || "") + (items.length ? " — " + items.length + " need attention" : "");
       browser.browserAction.setTitle({ title: title });
       items.forEach(function (n) {
-        var key = n.application_id + ":" + n.kind + ":" + n.since;
+        var key = ApplyPilotAttention.key(n);
         if (notified[key]) return;
         notified[key] = true;
         if (browser.notifications) {
-          browser.notifications.create("ap-" + n.application_id, {
-            type: "basic", iconUrl: browser.runtime.getURL("icons/icon-96.png"),
-            title: "ApplyPilot needs you: " + (n.company || "") + " — " + (n.title || ""),
-            message: (n.reason || n.kind || "") + (n.instructions ? "\n" + n.instructions : "")
-          }).catch(function () {});
+          browser.notifications.create(
+            "ap-" + n.application_id,
+            ApplyPilotAttention.notification(n, browser.runtime.getURL("icons/icon-96.png"))
+          ).catch(function () {});
         }
       });
     } catch (e) { /* backend offline: the popup explains */ }
@@ -430,7 +429,14 @@
     browser.notifications.onClicked.addListener(function (id) {
       if (id.indexOf("ap-") === 0) {
         var appId = id.slice(3);
-        browser.tabs.create({ url: browser.runtime.getURL("ui/dashboard.html#/application/" + appId) });
+        var owned = core.owned.get(appId);
+        if (owned) {
+          Promise.resolve(driver.focus(owned.tab_id, owned.window_id)).catch(function () {
+            return browser.tabs.create({ url: browser.runtime.getURL("ui/dashboard.html#/application/" + appId) });
+          });
+        } else {
+          browser.tabs.create({ url: browser.runtime.getURL("ui/dashboard.html#/application/" + appId) });
+        }
       }
     });
   }

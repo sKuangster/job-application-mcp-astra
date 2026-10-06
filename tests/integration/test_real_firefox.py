@@ -109,7 +109,7 @@ def test_real_firefox_end_to_end(project, monkeypatch):
             info = client.get(f"/api/applications/{app_id}")["summary"]["needs_user"] or {}
             if info.get("kind") == "captcha" and name not in seen_captcha:
                 seen_captcha.append(name)
-                # A human would solve it; here we only verify the hand-off (it stays parked for the user).
+                # A human would solve it; here we only verify the durable hand-off.
                 ids.pop(name, None)
 
         sys_ = {"client": client, "cfg": cfg}
@@ -118,7 +118,7 @@ def test_real_firefox_end_to_end(project, monkeypatch):
         except AssertionError:
             # Captcha app ends SKIPPED only after the submit click; anything else is a failure.
             raise
-        assert client.get(f"/api/applications/{captcha_id}")["summary"]["state"] == "NEEDS_USER"
+        assert client.get(f"/api/applications/{captcha_id}")["summary"]["state"] == "WAITING_FOR_CAPTCHA"
         for name in ("greenhouse", "workday", "icims", "smartrecruiters", "ashby"):
             assert states[name] == "SUBMITTED", (name, states)
             assert len(fx.by_fixture(name)) == 1

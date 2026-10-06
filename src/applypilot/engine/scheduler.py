@@ -37,9 +37,11 @@ from applypilot.identity import (
 )
 from applypilot.ingest.listings import fetch_jobs, simplify_url_for
 from applypilot.logsetup import ctx_application, ctx_job, ctx_worker
+from applypilot.models import PageSnapshot
 from applypilot.questions.resolver import Resolver
 from applypilot.reasoning import ReasoningService
 from applypilot.research import ResearchService
+from applypilot.security import redact_url
 from applypilot.state import TERMINAL, InvalidTransition, LeaseLost, S
 from applypilot.textutil import company_norm, stable_hash, title_norm
 
@@ -64,6 +66,7 @@ class Engine:
         self.tasks: list[asyncio.Task[Any]] = []
         self.closing = False
         self._wake = asyncio.Event()
+        self._captcha_checks: set[str] = set()
         self.attention_listeners: list[Any] = []
         bridge.handlers.append(self._on_bridge_event)
 
@@ -329,7 +332,8 @@ class Engine:
                     counts = self.db.claimable_counts()
                     active = self.db.query(
                         "SELECT COUNT(*) AS n FROM applications WHERE state NOT IN "
-                        "('INELIGIBLE','SUBMITTED','SUBMISSION_UNCONFIRMED','FAILED','SKIPPED','NEEDS_USER','READY_TO_SUBMIT','DISCOVERED')")[0]["n"]
+                        "('INELIGIBLE','SUBMITTED','SUBMISSION_UNCONFIRMED','FAILED','SKIPPED','WAITING_FOR_CAPTCHA',"
+                        "'NEEDS_USER','READY_TO_SUBMIT','DISCOVERED')")[0]["n"]
                     if active == 0 and counts["blocked"] == 0 and not self.db.meta_get("backlog_complete", False):
                         self.db.meta_set("backlog_complete", True)
                         self.db.event(None, "queue", "backlog_complete", "Backlog exhausted", {"mode": self.mode()})
@@ -359,18 +363,109 @@ class Engine:
                 continue
             for app in self.db.needs_user():
                 info = app["data"].get("needs_user") or {}
-                if info.get("kind") != "captcha" or app["id"] not in self.bridge.owned:
+                if app["state"] != S.WAITING_FOR_CAPTCHA or info.get("kind") != "captcha":
                     continue
-                if app["data"].get("submit_blocked_by") == "captcha":
-                    continue  # the user must finish the submission themselves and press Resume
-                try:
-                    snap = await self.bridge.call(app["id"], "scan", {}, timeout=15)
-                except (BrowserError, BridgeUnavailable):
-                    continue
-                captcha = (snap or {}).get("captcha") or {}
-                if not (captcha.get("present") and captcha.get("interactive")) and (snap or {}).get("page_kind") != "captcha":
-                    with contextlib.suppress(Exception):
-                        self.resume_application(app["id"], reason="CAPTCHA completed (detected automatically)")
+                with contextlib.suppress(Exception):
+                    await self.retry_captcha_detection(app["id"])
+
+    @staticmethod
+    def _valid_after_captcha(snap: PageSnapshot) -> bool:
+        """Require a recognizable live page before handing it back to a worker."""
+        if snap.captcha.interactive or snap.page_kind == "captcha":
+            return False
+        if snap.page_kind in {"unknown", "error"}:
+            return bool(snap.fields or snap.buttons or snap.confirmation.detected)
+        return True
+
+    async def retry_captcha_detection(self, app_id: str, *, focus: bool = False) -> dict[str, Any]:
+        """Perform one read-only challenge check and atomically resume when it is gone."""
+        app = self.db.get_application(app_id)
+        if app["state"] != S.WAITING_FOR_CAPTCHA:
+            raise InvalidTransition(f"application is {app['state']}, not WAITING_FOR_CAPTCHA")
+        if app_id in self._captcha_checks:
+            return {"waiting": True, "check_in_progress": True}
+        self._captcha_checks.add(app_id)
+        try:
+            if not self.bridge.connected or app_id not in self.bridge.owned:
+                if focus and self.bridge.connected:
+                    await self.open_application(app_id)
+                return {"waiting": True, "browser_connected": self.bridge.connected,
+                        "window_owned": app_id in self.bridge.owned}
+            if focus:
+                with contextlib.suppress(BrowserError, BridgeUnavailable):
+                    await self.bridge.call(app_id, "focus", {}, timeout=10)
+            raw = await self.bridge.call(app_id, "scan", {}, timeout=15)
+            snap = PageSnapshot.model_validate(raw or {})
+            current = self.db.get_application(app_id)
+            if current["state"] != S.WAITING_FOR_CAPTCHA:
+                return {"waiting": False, "state": current["state"]}
+            now = time.time()
+            wait = dict(current["data"].get("captcha_wait") or {})
+            detected_at = float(wait.get("detected_at") or current["updated_at"])
+            old_url = wait.get("page_url")
+            current_url = redact_url(snap.url)
+            navigation = bool(wait.get("navigation_observed") or (old_url and current_url != old_url))
+            wait.update({"last_checked_at": now, "check_count": int(wait.get("check_count") or 0) + 1,
+                         "last_page_url": current_url, "navigation_observed": navigation})
+            present = bool(snap.captcha.interactive or snap.page_kind == "captcha")
+            if present:
+                wait["challenge_type"] = snap.captcha.kind or wait.get("challenge_type") or "unknown"
+                timeout = self.cfg.settings.automation.captcha_wait_timeout
+                timed_out = now - detected_at >= timeout
+                if timed_out and not wait.get("timed_out_at"):
+                    wait["timed_out_at"] = now
+                    info = dict(current["data"].get("needs_user") or {})
+                    info["attention_revision"] = int(info.get("attention_revision") or 0) + 1
+                    self.db.update_application(app_id, data={"captcha_wait": wait, "needs_user": info},
+                                               current_url=current_url[:2000])
+                    self.db.event(app_id, "captcha", "captcha_wait_timeout",
+                                  "CAPTCHA is still waiting; application remains recoverable",
+                                  {"waiting_seconds": now - detected_at, "timeout_seconds": timeout,
+                                   "challenge_type": wait.get("challenge_type")}, level="WARNING")
+                    self.notify_attention(self.db.get_application(app_id), info)
+                else:
+                    self.db.update_application(app_id, data={"captcha_wait": wait}, current_url=current_url[:2000])
+                if focus:
+                    self.db.event(app_id, "captcha", "captcha_still_present",
+                                  "CAPTCHA is still present after manual detection retry",
+                                  {"waiting_seconds": now - detected_at, "check_count": wait["check_count"]})
+                return {"waiting": True, "present": True, "challenge_type": wait.get("challenge_type"),
+                        "waiting_seconds": now - detected_at, "timed_out": timed_out}
+
+            if not self._valid_after_captcha(snap):
+                wait["clear_but_unrecognized_at"] = now
+                self.db.update_application(app_id, data={"captcha_wait": wait}, current_url=current_url[:2000])
+                if focus:
+                    self.db.event(app_id, "captcha", "captcha_clear_unverified",
+                                  "Challenge disappeared but the page is not yet recognizable",
+                                  {"url": current_url, "page_kind": snap.page_kind}, level="WARNING")
+                return {"waiting": True, "present": False, "valid_page": False}
+
+            duration = max(0.0, now - detected_at)
+            possible_false_positive = not navigation and duration < max(5.0, self.cfg.settings.automation.captcha_check_interval)
+            resume = {
+                **wait, "resume_at": now, "time_waiting_seconds": duration,
+                "resume_url": current_url, "resume_page_kind": snap.page_kind,
+                "navigation_observed": navigation, "possible_false_positive": possible_false_positive,
+            }
+            target = self.resume_target(current)
+            out = self.db.user_action(
+                app_id, target, reason="CAPTCHA cleared; automatic resume",
+                data={"captcha_resume_pending": resume, "captcha_wait": wait,
+                      "page_attempts": {}, "account_attempts": 0, "page_help": 0, "apply_clicks": 0})
+            self.db.event(app_id, "captcha", "captcha_cleared",
+                          "CAPTCHA cleared; worker will resume automatically",
+                          {"detected_at": detected_at, "resume_at": now, "time_waiting_seconds": duration,
+                           "challenge_type": wait.get("challenge_type"), "navigation_observed": navigation,
+                           "possible_false_positive": possible_false_positive, "resume_state": target,
+                           "url": current_url})
+            self.wake()
+            return {"waiting": False, "present": False, "valid_page": True, "state": out["state"],
+                    "navigation_observed": navigation}
+        except (BrowserError, BridgeUnavailable) as exc:
+            return {"waiting": True, "browser_error": str(exc)}
+        finally:
+            self._captcha_checks.discard(app_id)
 
     # ------------------------------------------------------------------ user actions
     def resume_target(self, app: dict[str, Any]) -> str:
@@ -378,10 +473,12 @@ class Engine:
         if sub and sub["status"] == "SUBMITTING":
             return S.SUBMITTING
         info = app["data"].get("needs_user") or {}
-        target = info.get("resume_state")
+        wait = app["data"].get("captcha_wait") or {}
+        target = wait.get("resume_state") or info.get("resume_state")
         if target == S.CHECKING_ELIGIBILITY:
             return S.CHECKING_ELIGIBILITY
-        if app["id"] not in self.bridge.owned and app["state"] in (S.NEEDS_USER, S.READY_TO_SUBMIT):
+        if app["id"] not in self.bridge.owned and app["state"] in (
+                S.WAITING_FOR_CAPTCHA, S.NEEDS_USER, S.READY_TO_SUBMIT):
             job_open = bool(app["data"].get("pages"))
             return S.OPENING if job_open else S.READY
         if target == S.VALIDATING:
@@ -390,6 +487,8 @@ class Engine:
 
     def resume_application(self, app_id: str, *, reason: str = "resumed by user") -> dict[str, Any]:
         app = self.db.get_application(app_id)
+        if app["state"] == S.WAITING_FOR_CAPTCHA:
+            raise InvalidTransition("CAPTCHA completion is detected automatically; use Retry detection for an immediate check")
         if app["state"] not in (S.NEEDS_USER, S.READY_TO_SUBMIT):
             raise InvalidTransition(f"application is {app['state']}, not waiting for the user")
         target = self.resume_target(app)
@@ -452,6 +551,8 @@ class Engine:
         job = self.db.get_job(app["job_id"]) or {}
         url = app.get("current_url") or job.get("apply_url") or job.get("simplify_url") or job.get("direct_url")
         res = await self.bridge.call(app_id, "open", {"url": url, "strategy": "window", "active": True}, timeout=60)
+        self.db.update_application(app_id, tab_id=(res or {}).get("tab_id"), window_id=(res or {}).get("window_id"),
+                                   current_url=redact_url((res or {}).get("url") or url)[:2000])
         return {"opened": True, "tab": res}
 
     # ------------------------------------------------------------------ ingestion

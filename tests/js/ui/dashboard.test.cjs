@@ -208,14 +208,19 @@ test('detail: missing-fact form posts /answer; actions; submit only when READY_T
   } finally { q.close(); }
 });
 
-test('attention view lists NEEDS_USER applications', async () => {
+test('attention view lists CAPTCHA and NEEDS_USER applications with CAPTCHA actions', async () => {
   const p = loadPage('dashboard.html', { hash: '#/attention', routes: baseRoutes({
-    'GET /api/applications': (req) => ({ items: req.query.state === 'NEEDS_USER' ? [F.summary({ id: 'app-200', company: 'Hooli' })] : [], total: 1 })
+    'GET /api/applications': (req) => ({ items: req.query.state === 'WAITING_FOR_CAPTCHA,NEEDS_USER' ? [F.summary({ id: 'app-200', company: 'Hooli' })] : [], total: 1 })
   }) });
   try {
     await waitFor(() => p.doc.querySelectorAll('#view .att-item').length === 2, 2000, 'attention items');
     assert.match(p.doc.getElementById('view').textContent, /Hooli/);
     assert.match(p.doc.getElementById('view').textContent, /Solve the hCaptcha/);
+    const captcha = p.doc.querySelector('[data-app-id="app-099"]');
+    assert.match(captcha.textContent, /CAPTCHA REQUIRED/);
+    assert.ok(captcha.querySelector('[data-action="open"]'));
+    assert.ok(captcha.querySelector('[data-action="retry_captcha"]'));
+    assert.ok(captcha.querySelector('[data-action="skip"]'));
   } finally { p.close(); }
 });
 

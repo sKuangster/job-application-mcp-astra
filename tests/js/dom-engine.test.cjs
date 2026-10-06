@@ -617,6 +617,27 @@ test("captcha: visible challenge detected, invisible badge ignored, resumes afte
   pg.close();
 });
 
+test("captcha: vendor-neutral human-verification page is detected without help-copy false positives", () => {
+  const challenged = new JSDOM(
+    '<!doctype html><title>Security verification</title><main><h1>Robot check</h1>' +
+    '<div id="security-captcha" role="alert">Please verify that you are a human</div></main>',
+    { url: 'https://jobs.example/challenge', pretendToBeVisual: true });
+  let s = h.engineFor(challenged.window.document).scan({});
+  assert.equal(s.page_kind, "captcha");
+  assert.equal(s.captcha.interactive, true);
+  challenged.window.close();
+
+  const ordinary = new JSDOM(
+    '<!doctype html><title>Application</title><main><h1>Apply</h1>' +
+    '<p>Our privacy policy explains automated abuse prevention.</p>' +
+    '<form><label>Name <input name="name" required></label><button type="submit">Submit</button></form></main>',
+    { url: 'https://jobs.example/apply', pretendToBeVisual: true });
+  s = h.engineFor(ordinary.window.document).scan({});
+  assert.equal(s.page_kind, "form");
+  assert.equal(s.captcha.interactive, false);
+  ordinary.window.close();
+});
+
 test("verification: signup -> code page -> application -> confirmation; link page", async () => {
   const pg = await h.loadPage(srv.base + "/verification/index.html");
   const { engine } = pg;

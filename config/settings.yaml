@@ -33,6 +33,7 @@ automation:
   idle_poll_seconds: 2
   captcha_auto_resume: true           # resume automatically once you have solved a CAPTCHA
   captcha_check_interval: 20
+  captcha_wait_timeout: 86400         # after 24h raise a reminder; never fail the application
   stop_on_config_incomplete: true     # refuse to start while required facts are missing
 
 browser:

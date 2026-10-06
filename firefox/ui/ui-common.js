@@ -8,7 +8,7 @@
   var doc = root.document;
 
   var STATES = ['DISCOVERED', 'QUEUED', 'CHECKING_ELIGIBILITY', 'INELIGIBLE', 'READY', 'OPENING',
-    'APPLYING', 'ACCOUNT_REQUIRED', 'VERIFYING_EMAIL', 'FILLING', 'ANSWERING', 'NEEDS_USER',
+    'APPLYING', 'ACCOUNT_REQUIRED', 'VERIFYING_EMAIL', 'FILLING', 'ANSWERING', 'WAITING_FOR_CAPTCHA', 'NEEDS_USER',
     'VALIDATING', 'READY_TO_SUBMIT', 'SUBMITTING', 'SUBMITTED', 'SUBMISSION_UNCONFIRMED',
     'FAILED', 'SKIPPED'];
 
@@ -20,7 +20,7 @@
   function stateGroup(state) {
     switch (String(state || '').toUpperCase()) {
       case 'SUBMITTED': return 'success';
-      case 'NEEDS_USER': case 'SUBMISSION_UNCONFIRMED': case 'READY_TO_SUBMIT': return 'warn';
+      case 'WAITING_FOR_CAPTCHA': case 'NEEDS_USER': case 'SUBMISSION_UNCONFIRMED': case 'READY_TO_SUBMIT': return 'warn';
       case 'FAILED': return 'danger';
       case 'SKIPPED': case 'INELIGIBLE': return 'muted';
       case '': return 'muted';

@@ -1097,7 +1097,7 @@
       draw();
     });
     this.poller = new U.Poller(function () {
-      return api.applications({ state: 'NEEDS_USER', limit: 200 }).then(function (r) { fromApps = (r && r.items) || []; draw(); }, function () { /* status handles */ });
+      return api.applications({ state: 'WAITING_FOR_CAPTCHA,NEEDS_USER', limit: 200 }).then(function (r) { fromApps = (r && r.items) || []; draw(); }, function () { /* status handles */ });
     }, 5000);
   }
   AttentionView.prototype.start = function () { this.poller.start(); };

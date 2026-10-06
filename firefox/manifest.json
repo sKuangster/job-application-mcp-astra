@@ -21,7 +21,7 @@
     "<all_urls>"
   ],
   "background": {
-    "scripts": ["background/bridge-core.js", "background/background.js"],
+    "scripts": ["background/bridge-core.js", "background/attention.js", "background/background.js"],
     "persistent": true
   },
   "browser_action": {

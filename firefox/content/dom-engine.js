@@ -1112,6 +1112,27 @@
       if (document.querySelector("#challenge-form, #cf-challenge-running, .cf-browser-verification, #challenge-stage") && /verify(ing)? you are (a )?human/i.test(visText)) {
         return { present: true, kind: "cloudflare", interactive: true, detail: "cloudflare challenge page" };
       }
+      // Vendor-neutral widgets and full-page human-verification interstitials.
+      // Require a visible challenge-shaped container or strong imperative text;
+      // a mere mention of CAPTCHA in help/privacy copy is not enough.
+      var generic = queryAll("[id*='captcha'], [class*='captcha'], [id*='challenge'], [class*='challenge'], [data-sitekey]").filter(function (w) {
+        if (!visible(w) || w.closest(".grecaptcha-badge, [data-size=invisible]")) return false;
+        var widgetText = textOf(w, null, { max: 500 });
+        if (!widgetText && !w.children.length && !attr(w, "data-sitekey")) return false;
+        var hay = norm([attr(w, "id"), classOf(w), attr(w, "role"), widgetText].join(" "));
+        return /captcha|human verification|security (check|challenge)|robot check|challenge-container|challenge-stage/.test(hay);
+      });
+      if (generic.length) {
+        res.present = true;
+        res.interactive = true;
+        res.kind = res.kind || kindFromUrl(generic.map(function (w) { return classOf(w) + " " + attr(w, "id"); }).join(" "));
+        res.detail = "visible human-verification widget";
+        return res;
+      }
+      var strongChallengeText = /(?:complete|perform|pass) (?:the )?(?:captcha|security check|human verification)|(?:please )?(?:verify|confirm|prove) (?:that )?you(?:'re| are) (?:a )?human|checking (?:that )?you(?:'re| are) not a robot|unusual traffic from your (?:computer|network)|robot check/i;
+      if (strongChallengeText.test(visText) && visText.length < 12000) {
+        return { present: true, kind: res.kind || "unknown", interactive: true, detail: "human-verification page text" };
+      }
       return res;
     }
     function kindFromUrl(s) {

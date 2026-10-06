@@ -109,7 +109,7 @@ def run_until_settled(sys_: dict[str, Any], apps: dict[str, str], astra: Simulat
         states = {name: client.get(f"/api/applications/{app_id}")["summary"]["state"] for name, app_id in apps.items()}
         if on_needs_user:
             for name, state in states.items():
-                if state == "NEEDS_USER":
+                if state in ("NEEDS_USER", "WAITING_FOR_CAPTCHA"):
                     on_needs_user(name, apps[name])
         if all(s in TERMINAL for s in states.values()):
             return states
@@ -124,8 +124,7 @@ def solve_captcha(sys_: dict[str, Any], app_id: str) -> None:
     loop = engine.tasks[0].get_loop()
     fut = asyncio.run_coroutine_threadsafe(
         engine.bridge.call(app_id, "__test_eval", {"code": (
-            "window.FixtureKit.solveCaptcha();"
-            "Array.from(document.querySelectorAll('button')).find(b => /submit/i.test(b.textContent)).click(); true")},
+            "window.FixtureKit.solveCaptcha(); true")},
             timeout=10), loop)
     fut.result(15)
 
@@ -147,12 +146,10 @@ def test_full_pipeline_against_mock_ats(system):
         info = detail["summary"]["needs_user"] or {}
         if info.get("kind") == "captcha" and app_id not in solved:
             captcha_events.append(name)
-            # Other workers must keep going while this one waits for the human, who solves the CAPTCHA,
-            # clicks Submit themselves (ApplyPilot never re-clicks after a CAPTCHA) and presses Resume.
+            # Other workers keep going. The human only solves the challenge; the watcher
+            # detects that it disappeared, revalidates, and continues automatically.
             solve_captcha(system, app_id)
             solved.add(app_id)
-            time.sleep(0.5)
-            client.post(f"/api/applications/{app_id}/action", {"action": "resume"})
 
     states = run_until_settled(system, apps, astra, on_needs_user=on_needs_user)
     report = dump(client, apps)
@@ -188,6 +185,12 @@ def test_full_pipeline_against_mock_ats(system):
     assert all(e["application_id"] == apps["greenhouse"] for e in detail["events"])
     ids = [e["id"] for e in detail["events"]]
     assert ids == sorted(ids)
+
+    captcha_detail = client.get(f"/api/applications/{apps['captcha']}")
+    captcha_types = [e["event_type"] for e in captcha_detail["events"]]
+    assert "captcha_detected" in captcha_types and "captcha_cleared" in captcha_types
+    assert "captcha_application_continued" in captcha_types
+    assert len(fx.by_fixture("captcha")) == 1
 
     # Account creation was recorded without the password.
     wd_detail = client.get(f"/api/applications/{apps['workday']}")

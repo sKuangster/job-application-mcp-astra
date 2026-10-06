@@ -135,6 +135,8 @@ class AutomationSettings(_Strict):
     idle_poll_seconds: float = Field(2, ge=0.05, le=60)
     captcha_auto_resume: bool = True
     captcha_check_interval: float = Field(20, ge=2, le=600)
+    captcha_wait_timeout: float = Field(86400, ge=60, le=2592000,
+                                        description="Attention timeout; CAPTCHA remains recoverable")
     stop_on_config_incomplete: bool = True
 
 

@@ -1098,7 +1098,8 @@ class Database:
         active = sum(v for k, v in counts.items() if k not in {s.value for s in PARKED})
         return {
             "submitted": counts.get("SUBMITTED", 0), "skipped": counts.get("SKIPPED", 0),
-            "ineligible": counts.get("INELIGIBLE", 0), "needs_user": counts.get("NEEDS_USER", 0),
+            "ineligible": counts.get("INELIGIBLE", 0),
+            "needs_user": counts.get("NEEDS_USER", 0) + counts.get("WAITING_FOR_CAPTCHA", 0),
             "failed": counts.get("FAILED", 0), "unconfirmed": counts.get("SUBMISSION_UNCONFIRMED", 0),
             "active": active,
         }
@@ -1129,7 +1130,7 @@ class Database:
             where.append("a.resume LIKE ?")
             params.append(f"%{resume}%")
         if failure:
-            where.append("a.state IN ('FAILED','NEEDS_USER','SUBMISSION_UNCONFIRMED')")
+            where.append("a.state IN ('FAILED','NEEDS_USER','WAITING_FOR_CAPTCHA','SUBMISSION_UNCONFIRMED')")
         if date_from:
             where.append("a.updated_at>=?")
             params.append(date_from)
@@ -1151,7 +1152,7 @@ class Database:
     def needs_user(self) -> list[dict[str, Any]]:
         rows = self.query(
             "SELECT a.*, j.company, j.title FROM applications a JOIN jobs j ON j.id=a.job_id "
-            "WHERE a.state IN ('NEEDS_USER','READY_TO_SUBMIT') ORDER BY a.updated_at")
+            "WHERE a.state IN ('WAITING_FOR_CAPTCHA','NEEDS_USER','READY_TO_SUBMIT') ORDER BY a.updated_at")
         for r in rows:
             r["data"] = loads(r["data"], {})
         return rows

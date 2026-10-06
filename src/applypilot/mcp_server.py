@@ -195,10 +195,11 @@ def build_mcp(service: Any = None, *, caller: Caller | None = None) -> FastMCP:
     @mcp.tool(annotations=WRITE)
     async def application_action(
         application_id: str,
-        action: Literal["resume", "retry", "skip", "submit", "open", "confirm_submitted"],
+        action: Literal["resume", "retry", "retry_captcha", "skip", "submit", "open", "confirm_submitted"],
         note: str | None = None,
     ) -> dict[str, Any]:
-        """resume (after the user fixed a CAPTCHA/login), retry a failed one, skip, submit (approve a
+        """resume a generic intervention, retry a failed one, retry_captcha for an immediate read-only
+        challenge check, skip, submit (approve a
         READY_TO_SUBMIT application when auto-submit is off — still passes the validation gate), open (focus
         its Firefox window), confirm_submitted (user verified an unconfirmed submission)."""
         return await caller("application_action", {"application_id": application_id, "action": action, "note": note})

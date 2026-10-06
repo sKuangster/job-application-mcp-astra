@@ -193,7 +193,7 @@ All JSON. All require the token header except `/api/health`.
 | `GET /api/applications` | `q, company, role, state, ats, resume, failure (bool), date_from, date_to, limit, offset` | `{items: [AppSummary], total}` |
 | `GET /api/applications/{id}` | – | `AppDetail` |
 | `GET /api/applications/{id}/events` | `after_id, limit` | `{events: [Event]}` |
-| `POST /api/applications/{id}/action` | `{action: "resume"\|"retry"\|"skip"\|"open"\|"submit"\|"cancel", note?}` | `AppSummary` |
+| `POST /api/applications/{id}/action` | `{action: "resume"\|"retry"\|"retry_captcha"\|"skip"\|"open"\|"submit"\|"cancel", note?}` | `AppSummary` |
 | `POST /api/applications/{id}/answer` | `{field_key, value, remember: bool}` | `AppSummary` |
 | `GET /api/queue` | `limit` | `{items: [AppSummary]}` |
 | `GET /api/reasoning` | `status` | `{items: [ReasoningItem]}` |
@@ -251,6 +251,8 @@ message, data}`.
   `workday:prompt`, `workday:date-segments`, `ashby:yesno`, `text-date:<format>`.
 * `captcha.present` may be true for invisible badges; only `captcha.interactive` (and
   `page_kind: "captcha"`) means a human must act.
+* Interactive challenges park the application in `WAITING_FOR_CAPTCHA`. `retry_captcha` performs
+  one read-only scan; normal operation does this periodically and resumes automatically.
 * Background runtime messages for extension pages: `bridge_status`, `bridge_reconnect`, `bridge_user_action`.
 * Requests arriving through a reverse proxy/tunnel (forwarding headers present) may only reach `/mcp`.
 * Test-only: the jsdom fake browser (`tests/js/fake_browser.cjs`) additionally accepts
