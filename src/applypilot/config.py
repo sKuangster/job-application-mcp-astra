@@ -150,6 +150,8 @@ class BrowserSettings(_Strict):
     close_tab_on: Literal["terminal", "submitted", "never"] = "terminal"
     bridge_wait_timeout: float = Field(30, ge=1, le=3600)
     focus_new_windows: bool = False
+    test_one_mode: Literal["headed", "headless"] = "headed"
+    debug_action_delay_ms: int = Field(0, ge=0, le=10000)
 
 
 class OpenAISettings(_Strict):

@@ -158,6 +158,9 @@ class BrowserBridge:
             event = str(msg.get("event") or "")
             if event == "tab_closed" and app_id:
                 self.owned.pop(str(app_id), None)
+            elif event == "tab_navigated" and app_id and str(app_id) in self.owned:
+                self.owned[str(app_id)].update({k: v for k, v in (msg.get("data") or {}).items()
+                                                if k in {"url", "tab_id", "window_id"} and v is not None})
             await self._emit(event, app_id, msg.get("data") or {})
         elif mtype == "ping":
             await self._send({"type": "pong", "ts": time.time()})

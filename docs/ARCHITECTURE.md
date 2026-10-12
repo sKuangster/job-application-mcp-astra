@@ -81,10 +81,15 @@ this known fact" item.
   only one backend runs per database.
 * **Parking**: an application waiting on Astra is released with `blocked_on='reasoning'` and keeps
   its window. The reasoning service unblocks it when all its items are answered, and housekeeping
-  re-checks to close any race.
+  re-checks to close any race. The OpenAI provider requests strict schema output, validates complete
+  item coverage and action semantics before mutation, and performs two bounded repairs. Exhaustion
+  completes the item as failed and parks the application in `NEEDS_USER` with recovery diagnostics.
 * **CAPTCHA parking**: `WAITING_FOR_CAPTCHA` persists the page/resume evidence and releases the
   worker lease. A separate watcher only scans the DOM; once the challenge is absent and the page is
   recognizable, it transitions back to the persisted resume state. Long waits remain recoverable.
+* **Manual-login parking**: Watch Mode focuses the owned tab and releases the lease. The same
+  read-only watcher recognizes a successful login/navigation and resumes the same application.
+  Passwordless/passkey pages take this path directly rather than entering page reasoning.
 * **Domain limits and cool-down** are part of the claim query; consecutive failures cool a domain down.
 * **Tab budget**: new browser work isn't claimed when too many windows are held.
 * **Submissions**: `reserve_submission` atomically fences the lease, rejects existing or equivalent

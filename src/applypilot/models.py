@@ -77,9 +77,13 @@ class PageError(_M):
 
 class Captcha(_M):
     present: bool = False
+    library_detected: bool = False
+    widget_present: bool = False
+    challenge_blocking: bool = False
     kind: str | None = None
     interactive: bool = False
     detail: str | None = None
+    evidence: list[str] = Field(default_factory=list)
 
 
 class Confirmation(_M):

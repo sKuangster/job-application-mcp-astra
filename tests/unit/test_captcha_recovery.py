@@ -135,6 +135,42 @@ async def test_restart_and_browser_reconnect_leave_captcha_recoverable(cfg: Any,
 
 
 @pytest.mark.asyncio
+async def test_manual_login_completion_is_detected_and_resumed(cfg: Any, db: Any) -> None:
+    bridge = FakeBridge([page(captcha=False, fingerprint="signed-in")])
+    engine = Engine(cfg, db, bridge)  # type: ignore[arg-type]
+    job_id = make_job(db, company="Login Co", url="https://jobs.example/apply/login")
+    app, _ = db.create_application(job_id, mode="test_one")
+    db.update_application(app["id"], state=S.NEEDS_USER, tab_id=7, window_id=8,
+                          data={"needs_user": {"kind": "login", "resume_state": S.APPLYING}})
+    bridge.owned[app["id"]] = {"app_id": app["id"], "tab_id": 7, "window_id": 8}
+
+    result = await engine.retry_login_detection(app["id"])
+
+    assert result == {"waiting": False, "state": S.APPLYING, "page_kind": "form"}
+    assert bridge.calls == ["scan"]
+    assert db.get_application(app["id"])["state"] == S.APPLYING
+    assert any(e["event_type"] == "login_completed" for e in db.events(app["id"]))
+
+
+@pytest.mark.asyncio
+async def test_captcha_clear_on_login_resumes_to_account_required_not_application(cfg: Any, db: Any) -> None:
+    login = page(captcha=False, fingerprint="passkey", url="https://login.icims.com/u/mfa-webauthn")
+    login.update({"page_kind": "login", "heading": "Use fingerprint or face recognition to login",
+                  "fields": [], "buttons": [{"id": "0:2", "text": "Use password", "kind": "other"}]})
+    bridge = FakeBridge([login])
+    engine = Engine(cfg, db, bridge)  # type: ignore[arg-type]
+    app = waiting_app(db, bridge)
+
+    result = await engine.retry_captcha_detection(app["id"])
+
+    current = db.get_application(app["id"])
+    assert result["state"] == S.ACCOUNT_REQUIRED
+    assert current["state"] == S.ACCOUNT_REQUIRED
+    cleared = next(e for e in db.events(app["id"]) if e["event_type"] == "captcha_cleared")
+    assert cleared["data"]["authentication_pending"] is True
+
+
+@pytest.mark.asyncio
 async def test_timeout_is_bounded_attention_not_failure(cfg: Any, db: Any) -> None:
     bridge = FakeBridge([page(captcha=True)])
     engine = Engine(cfg, db, bridge)  # type: ignore[arg-type]

@@ -40,7 +40,7 @@ from applypilot.questions.options import real_options, to_field_value
 from applypilot.questions.resolver import Resolution, ResolveContext, limits_for, options_signature
 from applypilot.resumes import select_resume
 from applypilot.security import redact_url
-from applypilot.state import TERMINAL, S
+from applypilot.state import BROWSER_STATES, TERMINAL, S
 from applypilot.textutil import normalize_question, truncate
 
 if TYPE_CHECKING:
@@ -119,6 +119,11 @@ class ApplicationRunner:
                 if state in TERMINAL or state in (S.WAITING_FOR_CAPTCHA, S.NEEDS_USER, S.READY_TO_SUBMIT):
                     await self._finish_terminal()
                     return
+                if (state in BROWSER_STATES - {S.READY, S.OPENING, S.SUBMITTING}
+                        and self.app["id"] not in self.e.bridge.owned):
+                    self.go(S.OPENING, "controlled tab is missing; reopening the same application",
+                            data={"pages": [], "tab_reopen_required": False}, tab_id=None, window_id=None)
+                    continue
                 if self.e.should_yield() and state != S.SUBMITTING:
                     self.release(Stop(reason="paused"))
                     return
@@ -129,7 +134,20 @@ class ApplicationRunner:
                 try:
                     outcome = await handler()
                 except NeedsUser as nu:
+                    if nu.kind in ("login", "captcha", "verification"):
+                        await self._focus_for_attention(nu.kind)
                     outcome = self.needs_user(nu)
+                except BrowserError as exc:
+                    if exc.code != "HOST_PERMISSION_REQUIRED":
+                        raise
+                    await self._focus_for_attention("permission")
+                    outcome = self.needs_user(NeedsUser(
+                        "permission",
+                        "Firefox has not granted ApplyPilot access to this job site",
+                        "Reload or reinstall the current ApplyPilot Firefox extension, accept its requested "
+                        "site-access permission, reload the job tab, then press Resume.",
+                        resume_state=self.app["state"],
+                    ))
                 if isinstance(outcome, Stop):
                     self.release(outcome)
                     return
@@ -138,6 +156,8 @@ class ApplicationRunner:
             raise NeedsUser("unexpected", "the application did not converge after many steps",
                             "Open the application tab, check where it is stuck, then press Resume or Skip.")
         except NeedsUser as nu:
+            if nu.kind in ("login", "captcha", "verification"):
+                await self._focus_for_attention(nu.kind)
             self.release(self.needs_user(nu))
         finally:
             self.metric("seconds_active", time.monotonic() - started)
@@ -224,9 +244,29 @@ class ApplicationRunner:
                   audit: bool = True) -> Any:
         started = time.monotonic()
         err: str | None = None
+        options = self.e.application_browser_options(self.app["id"])
+        visible_actions = {"navigate", "fill", "upload", "click", "click_text", "click_point"}
         try:
-            return await self.e.bridge.call(self.app["id"], action, payload or {},
-                                            timeout=timeout or self.cfg.settings.browser.command_timeout)
+            if action in visible_actions and options["mode"] == "headed" and self.app["id"] in self.e.bridge.owned:
+                focus = await self.e.bridge.call(self.app["id"], "focus", {}, timeout=10)
+                if options["watch"]:
+                    self.event("browser", "focus_confirmed", f"Focused tab before {action}", focus or {})
+                target = (payload or {}).get("element_id") or (payload or {}).get("field_id")
+                if not target and action == "fill":
+                    items = (payload or {}).get("items") or []
+                    target = items[0].get("field_id") if items else None
+                if options["watch"] and target:
+                    with contextlib.suppress(BrowserError, BridgeUnavailable):
+                        await self.e.bridge.call(self.app["id"], "highlight", {"element_id": target}, timeout=5)
+            if action in visible_actions and options["slow_mo_ms"]:
+                await asyncio.sleep(options["slow_mo_ms"] / 1000)
+            result = await self.e.bridge.call(self.app["id"], action, payload or {},
+                                              timeout=timeout or self.cfg.settings.browser.command_timeout)
+            if action == "open" and options["mode"] == "headed":
+                focus = await self.e.bridge.call(self.app["id"], "focus", {}, timeout=10)
+                if options["watch"]:
+                    self.event("browser", "focus_confirmed", "Focused newly opened application tab", focus or {})
+            return result
         except (BrowserError, BridgeUnavailable) as exc:
             err = f"{getattr(exc, 'code', 'BRIDGE')}: {exc}"
             raise
@@ -269,8 +309,22 @@ class ApplicationRunner:
                 self.event("browser", "page_visited", f"{snap.page_kind}: {truncate(snap.heading or snap.title, 100)}",
                            {"url": redact_url(snap.url), "page_kind": snap.page_kind, "fields": len(snap.fields),
                             "buttons": [b.text for b in snap.buttons][:12], "errors": [e.text for e in snap.errors][:5],
-                            "step": entry["step"]})
+                            "step": entry["step"], "title": truncate(snap.title, 160),
+                            "tab_id": self.app.get("tab_id"), "window_id": self.app.get("window_id"),
+                            "captcha": snap.captcha.model_dump()})
         return snap
+
+    async def _focus_for_attention(self, kind: str) -> None:
+        if not self.e.bridge.connected or self.app["id"] not in self.e.bridge.owned:
+            return
+        try:
+            focus = await self.e.bridge.call(self.app["id"], "focus", {}, timeout=10)
+            tab = await self.e.bridge.call(self.app["id"], "tab_info", {}, timeout=10)
+            self.event("browser", "attention_focused", f"Focused application tab for {kind}",
+                       {"kind": kind, **(tab or {}), "focus": focus})
+        except (BrowserError, BridgeUnavailable) as exc:
+            self.event("browser", "focus_failed", f"Could not focus application tab for {kind}",
+                       {"kind": kind, "error": str(exc)}, level="WARNING")
 
     async def wait_ready(self, timeout: float | None = None) -> None:
         await self.cmd("wait_ready", {"timeout_ms": int((timeout or self.cfg.settings.browser.page_load_timeout) * 1000),
@@ -400,6 +454,10 @@ class ApplicationRunner:
         return S.READY
 
     async def _enrich(self) -> None:
+        # test-one is intentionally offline with respect to listing sources. It may
+        # open the already stored employer URL in Firefox, but never refresh Simplify.
+        if self.e.mode() == "test_one":
+            return
         if self.job.get("details") or not self.job.get("simplify_url") or not self.cfg.settings.ingestion.simplify_fetch:
             return
         last_exc: Exception | None = None
@@ -450,9 +508,11 @@ class ApplicationRunner:
             return self.go(S.FAILED, "job has no usable application link")
         if self.app["id"] in self.e.bridge.owned and self.data.get("pages"):
             # Recovered after a crash/restart: the owned tab still exists; continue from the page.
+            if self.e.application_browser_options(self.app["id"])["mode"] == "headed":
+                await self.cmd("focus", {}, timeout=10)
             return S.APPLYING
         res = await self.cmd("open", {"url": url, "strategy": self.cfg.settings.browser.tab_strategy,
-                                      "active": self.cfg.settings.browser.focus_new_windows},
+                                      "active": self.e.application_browser_options(self.app["id"])["mode"] == "headed"},
                              timeout=self.cfg.settings.browser.page_load_timeout + 10)
         self.save(tab_id=(res or {}).get("tab_id") or 0, window_id=(res or {}).get("window_id"),
                   current_url=redact_url((res or {}).get("url") or url)[:2000])
@@ -1012,6 +1072,14 @@ class ApplicationRunner:
         snap = await self.scan()
         if snap.page_kind not in ("login", "signup"):
             return S.APPLYING
+        auth_text = " ".join([snap.title, snap.heading, snap.url, *(b.text for b in snap.buttons)]).lower()
+        passwordless = not any(f.type == "password" for f in snap.fields) and any(
+            word in auth_text for word in ("passkey", "webauthn", "fingerprint", "face recognition",
+                                           "device confirmation", "security key", "use password"))
+        if self.e.application_browser_options(self.app["id"])["watch"] or passwordless:
+            raise NeedsUser("login", "manual authentication required",
+                            "Sign in in the focused Firefox tab. ApplyPilot does not record the password; after the "
+                            "page navigates successfully, ApplyPilot will detect it and resume.", resume_state=S.APPLYING)
         attempts = int(self.data.get("account_attempts") or 0)
         if attempts >= 4:
             raise NeedsUser("login", "could not sign in or create an account automatically",

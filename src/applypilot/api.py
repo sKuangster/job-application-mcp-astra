@@ -207,6 +207,21 @@ def create_app(cfg: AppConfig, *, db: Database | None = None, bridge: BrowserBri
     async def sync(body: dict[str, Any] = Body(default={})) -> dict[str, Any]:
         return await service.sync(body.get("mode") or "backlog")
 
+    @app.post("/api/test-one", dependencies=guarded)
+    async def test_one(body: dict[str, Any] = Body(default={})) -> dict[str, Any]:
+        return await service.test_one(body.get("job_id"), dry_run=bool(body.get("dry_run")),
+                                      browser_mode=body.get("browser_mode"), watch=bool(body.get("watch")),
+                                      slow_mo_ms=body.get("slow_mo_ms"))
+
+    @app.post("/api/backend/shutdown", dependencies=guarded)
+    async def backend_shutdown() -> dict[str, Any]:
+        callback = getattr(app.state, "shutdown_callback", None)
+        if callback is None:
+            raise HTTPException(503, "backend shutdown is not available in this server mode")
+        import asyncio
+        asyncio.get_running_loop().call_soon(callback)
+        return {"shutting_down": True}
+
     @app.get("/api/applications", dependencies=guarded)
     async def applications(q: str | None = None, company: str | None = None, role: str | None = None,
                            state: str | None = None, ats: str | None = None, resume: str | None = None,

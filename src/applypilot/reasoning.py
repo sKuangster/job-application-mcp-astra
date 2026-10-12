@@ -23,6 +23,7 @@ from applypilot.config import AppConfig, lookup
 from applypilot.db import Database
 from applypilot.questions.options import DECLINE, match_option
 from applypilot.questions.resolver import facts_digest, fits_limits
+from applypilot.security import redact_url
 from applypilot.textutil import company_norm, normalize_question, truncate, word_count
 
 log = logging.getLogger("applypilot.reasoning")
@@ -57,6 +58,9 @@ class ReasoningService:
     # ------------------------------------------------------------------ producer side
     def enqueue(self, *, app_id: str, kind: str, payload: dict[str, Any], field_key: str = "") -> dict[str, Any]:
         dedupe = payload.get("dedupe_key") or f"{kind}:{app_id}:{field_key}:{uuid.uuid4().hex}"
+        scope = self.db.execution_scope()
+        if scope and scope.get("kind") == "test_one" and scope.get("application_id") == app_id:
+            dedupe = f"test-one:{app_id}:{dedupe}"
         out = self.db.enqueue_reasoning(kind=kind, dedupe_key=dedupe, payload=payload, app_id=app_id, field_key=field_key)
         self._new_work.set()
         return out
@@ -79,20 +83,22 @@ class ReasoningService:
     async def get_batch(self, *, owner: str = "astra", max_items: int | None = None, wait_seconds: float = 0,
                         kinds: list[str] | None = None) -> dict[str, Any]:
         max_items = max_items or self.cfg.settings.reasoning.batch_max_items
+        scope = self.db.execution_scope()
+        scoped_app = str(scope.get("application_id")) if scope and scope.get("kind") == "test_one" else None
         deadline = time.monotonic() + max(0.0, wait_seconds)
-        while self.db.pending_reasoning_count() == 0 and time.monotonic() < deadline:
+        while self.db.pending_reasoning_count(scoped_app) == 0 and time.monotonic() < deadline:
             self._new_work.clear()
             try:
                 await asyncio.wait_for(self._new_work.wait(), timeout=min(2.0, max(0.05, deadline - time.monotonic())))
             except TimeoutError:
                 pass
-        if self.db.pending_reasoning_count() and wait_seconds > 0:
+        if self.db.pending_reasoning_count(scoped_app) and wait_seconds > 0:
             # Briefly collect more items so one model call covers several questions.
             collect_until = min(deadline, time.monotonic() + self.cfg.settings.reasoning.batch_collect_seconds)
-            while time.monotonic() < collect_until and self.db.pending_reasoning_count() < max_items:
+            while time.monotonic() < collect_until and self.db.pending_reasoning_count(scoped_app) < max_items:
                 await asyncio.sleep(0.25)
         items = self.db.lease_reasoning(owner, limit=max_items * 2, lease_seconds=self.cfg.settings.reasoning.item_lease_seconds,
-                                        kinds=kinds)
+                                        kinds=kinds, application_id=scoped_app)
         items, deferred = self._defer_until_research(items)
         give_back = deferred + items[max_items:]
         items = items[:max_items]
@@ -128,8 +134,10 @@ class ReasoningService:
 
     def _build_batch(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         batch_id = "batch_" + uuid.uuid4().hex[:12]
+        scope = self.db.execution_scope()
+        scoped_app = str(scope.get("application_id")) if scope and scope.get("kind") == "test_one" else None
         if not items:
-            return {"batch_id": batch_id, "items": [], "pending_total": self.db.pending_reasoning_count(),
+            return {"batch_id": batch_id, "items": [], "pending_total": self.db.pending_reasoning_count(scoped_app),
                     "note": "No reasoning work pending. Call get_status to check progress."}
         apps: dict[str, dict[str, Any]] = {}
         templates_needed: set[str] = set()
@@ -157,6 +165,15 @@ class ReasoningService:
                     entry["previous_attempt_rejected"] = p["rejections"][-1]
             else:
                 entry.update({k: v for k, v in p.items() if k not in {"dedupe_key"}})
+                # Older queued page items may predate newly-added URL redaction rules.
+                # Sanitize again at the provider boundary without rewriting durable history.
+                if item["kind"] == "page":
+                    if entry.get("url"):
+                        entry["url"] = redact_url(str(entry["url"]))
+                    if isinstance(entry.get("page"), dict):
+                        entry["page"] = dict(entry["page"])
+                        if entry["page"].get("url"):
+                            entry["page"]["url"] = redact_url(str(entry["page"]["url"]))
                 needs_profile = needs_profile or item["kind"] == "eligibility"
             out_items.append(entry)
         candidate: dict[str, Any] = {"facts": facts_digest(self.cfg)}
@@ -167,7 +184,7 @@ class ReasoningService:
         return {
             "batch_id": batch_id, "instructions": ANSWER_INSTRUCTIONS, "candidate": candidate,
             "templates": templates, "applications": apps, "items": out_items,
-            "pending_total": self.db.pending_reasoning_count(),
+            "pending_total": self.db.pending_reasoning_count(scoped_app),
         }
 
     def _application_context(self, app_id: str) -> dict[str, Any]:
@@ -199,6 +216,7 @@ class ReasoningService:
         rejected: list[dict[str, Any]] = []
         research_saved = []
         unblock: set[str] = set()
+        failed_apps: dict[str, dict[str, str]] = {}
         for res in results:
             if not isinstance(res, dict):
                 rejected.append({"item": None, "reason": "result must be an object"})
@@ -215,6 +233,13 @@ class ReasoningService:
                 rejected.append({"item_id": item_id, "reason": "unknown item_id"})
                 continue
             item = rows[0]
+            scope = self.db.execution_scope()
+            if scope and scope.get("kind") == "test_one":
+                selected = str(scope.get("application_id") or "")
+                waiter_ids = {str(w["application_id"]) for w in item["waiters"]}
+                if waiter_ids != {selected}:
+                    rejected.append({"item_id": item_id, "reason": "item is outside the active test-one scope"})
+                    continue
             if item["status"] not in ("PENDING", "LEASED"):
                 accepted.append({"item_id": item_id, "status": "already_completed"})
                 continue
@@ -227,13 +252,15 @@ class ReasoningService:
                     waiters = self.db.complete_reasoning(item_id, {"needs_user": f"Answer rejected 3 times: {reason}"},
                                                          status="FAILED")
                     unblock |= {w["application_id"] for w in waiters}
+                    failed_apps.update({w["application_id"]: {"item_id": item_id, "reason": reason} for w in waiters})
                 else:
                     self.db.requeue_reasoning(item_id, payload)
                 rejected.append({"item_id": item_id, "reason": reason, "will_retry": attempts < 3})
                 self.metrics["items_rejected"] += 1
                 for w in item["waiters"]:
                     self.db.event(w["application_id"], "reasoning", "answer_rejected", reason,
-                                  {"item_id": item_id, "value": res.get("value")}, level="WARNING")
+                                  {"item_id": item_id, "attempt": attempts, "will_retry": attempts < 3,
+                                   "response_shape": self._response_shape(res)}, level="WARNING")
                 continue
             if research_saved:
                 normalized.setdefault("research_ids", research_saved)
@@ -247,12 +274,85 @@ class ReasoningService:
                               {"item_id": item_id, "field_key": w["field_key"], "provider": provider,
                                "needs_user": normalized.get("needs_user")})
         ready = [a for a in unblock if not self.open_items_for(a)]
-        self.db.unblock(ready)
+        recovered = [a for a in ready if a in failed_apps]
+        for app_id in recovered:
+            self._park_reasoning_failure(app_id, **failed_apps[app_id])
+        self.db.unblock(a for a in ready if a not in failed_apps)
         self.db.record_model_call(provider=provider, kind="batch_answered", items=len(results), application_ids=sorted(unblock),
                                   request_chars=0, response_chars=len(json.dumps(results, default=str)),
                                   duration_ms=int((time.monotonic() - started) * 1000))
         return {"accepted": accepted, "rejected": rejected, "research_saved": research_saved,
-                "applications_resumed": len(ready), "pending_total": self.db.pending_reasoning_count()}
+                "applications_resumed": len(ready) - len(recovered), "applications_recovered": len(recovered),
+                "pending_total": self.db.pending_reasoning_count()}
+
+    def validate_provider_results(self, item_ids: list[str], results: Any) -> list[str]:
+        """Validate a provider envelope without mutating queue state."""
+        if not isinstance(results, list):
+            return ["response.results must be an array"]
+        errors: list[str] = []
+        by_id: dict[str, dict[str, Any]] = {}
+        for index, result in enumerate(results):
+            if not isinstance(result, dict):
+                errors.append(f"results[{index}] must be an object")
+                continue
+            item_id = str(result.get("item_id") or "")
+            if not item_id:
+                errors.append(f"results[{index}] is missing item_id")
+            elif item_id in by_id:
+                errors.append(f"duplicate result for {item_id}")
+            else:
+                by_id[item_id] = result
+        expected = set(item_ids)
+        for missing in sorted(expected - set(by_id)):
+            errors.append(f"missing result for {missing}")
+        for extra in sorted(set(by_id) - expected):
+            errors.append(f"unexpected result for {extra}")
+        rows = {r["id"]: r for r in self.db.reasoning_items(ids=item_ids)}
+        for item_id in item_ids:
+            if item_id not in by_id or item_id not in rows:
+                continue
+            ok, _, reason = self._validate(rows[item_id], by_id[item_id])
+            if not ok:
+                errors.append(f"{item_id}: {reason}")
+        return errors
+
+    def fail_provider_items(self, item_ids: list[str], reason: str, *, provider: str = "openai") -> None:
+        """Convert exhausted provider-output repairs into an explicit recoverable user state."""
+        affected: dict[str, dict[str, str]] = {}
+        for item in self.db.reasoning_items(ids=item_ids):
+            if item["status"] not in ("PENDING", "LEASED"):
+                continue
+            message = f"{provider} response validation failed after bounded repairs: {truncate(reason, 350)}"
+            waiters = self.db.complete_reasoning(item["id"], {"needs_user": message}, status="FAILED")
+            for waiter in waiters:
+                affected[waiter["application_id"]] = {"item_id": item["id"], "reason": message}
+        for app_id, info in affected.items():
+            if not self.open_items_for(app_id):
+                self._park_reasoning_failure(app_id, **info)
+
+    @staticmethod
+    def _response_shape(result: dict[str, Any]) -> dict[str, Any]:
+        action = result.get("action")
+        return {"keys": sorted(str(k) for k in result)[:20],
+                "action_type": action.get("type") if isinstance(action, dict) else None,
+                "action_is_object": isinstance(action, dict)}
+
+    def _park_reasoning_failure(self, app_id: str, *, item_id: str, reason: str) -> None:
+        app = self.db.get_application(app_id)
+        if app["state"] in {"SUBMITTING", "SUBMITTED", "SUBMISSION_UNCONFIRMED", "FAILED", "SKIPPED", "INELIGIBLE"}:
+            self.db.unblock([app_id])
+            return
+        info = {"kind": "reasoning", "reason": reason,
+                "instructions": "The model could not produce a safe valid action. Open the focused application tab, "
+                                "complete the authentication/page step manually, then press Resume.",
+                "fields": [], "missing": [], "since": time.time(), "resume_state": app["state"],
+                "reasoning_item_id": item_id}
+        self.db.transition(app_id, "NEEDS_USER", reason=reason, data={"needs_user": info},
+                           fields={"blocked_on": None, "worker_id": None, "lease_token": None,
+                                   "lease_until": None, "available_at": time.time()})
+        self.db.event(app_id, "reasoning", "reasoning_recovery",
+                      "Reasoning validation exhausted; application parked safely for the user",
+                      {"item_id": item_id, "decision": "needs_user", "error": reason}, level="WARNING")
 
     def _save_research(self, research: dict[str, Any]) -> str | None:
         company = str(research.get("company") or "").strip()
@@ -278,6 +378,9 @@ class ReasoningService:
             if not isinstance(action, dict) or action.get("type") not in {
                     "click_button", "click_text", "click_point", "needs_user", "skip_job", "wait"}:
                 return False, {}, "page items need action.type in click_button|click_text|click_point|needs_user|skip_job|wait"
+            if action.get("type") == "needs_user":
+                return True, {"needs_user": truncate(str(action.get("reason") or res.get("reason") or
+                                                           "manual page action required"), 500)}, ""
             return True, {"action": action, "reason": truncate(str(res.get("reason") or ""), 500)}, ""
         if "value" not in res:
             return False, {}, "missing value"

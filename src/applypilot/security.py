@@ -14,7 +14,7 @@ SECRET_KEYS = {
     "access_token", "refresh_token", "cookie", "cookies", "set-cookie", "session", "otp",
     "verification_code", "code_value", "client_secret", "base64", "file_base64",
 }
-_SECRET_QUERY = re.compile(r"(token|key|secret|password|code|sig|signature|auth)", re.I)
+_SECRET_QUERY = re.compile(r"(token|key|secret|password|code|sig|signature|auth|state|ticket|assertion)", re.I)
 REDACTED = "[REDACTED]"
 
 

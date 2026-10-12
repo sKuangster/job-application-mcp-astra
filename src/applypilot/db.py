@@ -174,6 +174,13 @@ class Database:
             "INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (key, dumps(value))))
 
+    def meta_delete(self, key: str) -> None:
+        self.write(lambda c: c.execute("DELETE FROM meta WHERE key=?", (key,)))
+
+    def execution_scope(self) -> dict[str, Any] | None:
+        value = self.meta_get("execution_scope")
+        return value if isinstance(value, dict) else None
+
     # ------------------------------------------------------------------ locks
     def acquire_lock(self, name: str, owner: str, ttl: float) -> bool:
         now = self.clock()
@@ -399,6 +406,36 @@ class Database:
             return count
 
         return self.write(op)
+
+    def test_job_candidates(self, job_id: str | None = None, *, new_only: bool = False) -> list[dict[str, Any]]:
+        """Read-only candidates for a single offline test.
+
+        Only imported, active listings with a stored employer URL are returned. Jobs
+        with a submission intent, an unsafe terminal application, or an equivalent
+        submitted posting are excluded.
+        """
+        params: list[Any] = []
+        where = [
+            "j.active=1", "j.source<>'manual'", "COALESCE(j.apply_url,j.direct_url) IS NOT NULL",
+            "NOT EXISTS (SELECT 1 FROM submissions sx WHERE sx.job_id=j.id AND sx.status<>'ABORTED')",
+            "NOT EXISTS (SELECT 1 FROM submissions se WHERE se.status IN "
+            "('SUBMITTING','SUBMITTED','SUBMISSION_UNCONFIRMED') AND "
+            "(se.dedupe_key=(j.company_norm || '|' || j.title_norm) OR "
+            "(j.ats_job_key IS NOT NULL AND se.ats_job_key=j.ats_job_key)))",
+            "(a.id IS NULL OR a.state IN ('QUEUED','CHECKING_ELIGIBILITY','READY','OPENING','APPLYING',"
+            "'ACCOUNT_REQUIRED','VERIFYING_EMAIL','FILLING','ANSWERING','WAITING_FOR_CAPTCHA','NEEDS_USER',"
+            "'VALIDATING','READY_TO_SUBMIT'))",
+        ]
+        if job_id is not None:
+            where.append("j.id=?")
+            params.append(job_id)
+        if new_only:
+            where.append("a.id IS NULL")
+        rows = self.query(
+            "SELECT j.*, a.id AS application_id, a.state AS application_state, a.worker_id, a.lease_until "
+            "FROM jobs j LEFT JOIN applications a ON a.job_id=j.id WHERE " + " AND ".join(where) +
+            " ORDER BY CASE WHEN a.id IS NULL THEN 0 ELSE 1 END, j.date_posted DESC, j.first_seen ASC", params)
+        return [self._job_row(r) or {} for r in rows]
 
     def requeue_changed_ineligible(self, job_ids: list[str]) -> int:
         """Re-evaluate INELIGIBLE applications whose job data materially changed."""
@@ -800,16 +837,22 @@ class Database:
 
         return self.write(op)
 
-    def lease_reasoning(self, owner: str, *, limit: int, lease_seconds: float, kinds: list[str] | None = None) -> list[dict[str, Any]]:
+    def lease_reasoning(self, owner: str, *, limit: int, lease_seconds: float, kinds: list[str] | None = None,
+                        application_id: str | None = None) -> list[dict[str, Any]]:
         now = self.clock()
 
         def op(c: sqlite3.Connection) -> list[dict[str, Any]]:
-            sql = ("SELECT * FROM reasoning_items WHERE (status='PENDING' OR (status='LEASED' AND lease_until < ?))")
+            sql = ("SELECT DISTINCT r.* FROM reasoning_items r " +
+                   ("JOIN reasoning_waiters w ON w.item_id=r.id " if application_id else "") +
+                   "WHERE (r.status='PENDING' OR (r.status='LEASED' AND r.lease_until < ?))")
             params: list[Any] = [now]
+            if application_id:
+                sql += " AND w.application_id=?"
+                params.append(application_id)
             if kinds:
-                sql += f" AND kind IN ({','.join('?' for _ in kinds)})"
+                sql += f" AND r.kind IN ({','.join('?' for _ in kinds)})"
                 params += kinds
-            rows = c.execute(sql + " ORDER BY created_at LIMIT ?", [*params, limit]).fetchall()
+            rows = c.execute(sql + " ORDER BY r.created_at LIMIT ?", [*params, limit]).fetchall()
             out = []
             for row in rows:
                 c.execute("UPDATE reasoning_items SET status='LEASED', lease_owner=?, lease_until=?, attempts=attempts+1, "
@@ -836,8 +879,16 @@ class Database:
                 f"UPDATE reasoning_items SET status='PENDING', lease_owner=NULL, lease_until=NULL "
                 f"WHERE status='LEASED' AND id IN ({','.join('?' for _ in ids)})", ids))
 
-    def pending_reasoning_count(self) -> int:
-        rows = self.query("SELECT COUNT(*) AS n FROM reasoning_items WHERE status IN ('PENDING','LEASED')")
+    def pending_reasoning_count(self, application_id: str | None = None) -> int:
+        sql = "SELECT COUNT(DISTINCT r.id) AS n FROM reasoning_items r"
+        params: list[Any] = []
+        if application_id:
+            sql += " JOIN reasoning_waiters w ON w.item_id=r.id"
+        sql += " WHERE r.status IN ('PENDING','LEASED')"
+        if application_id:
+            sql += " AND w.application_id=?"
+            params.append(application_id)
+        rows = self.query(sql, params)
         return int(rows[0]["n"])
 
     def reasoning_items(self, *, status: str | None = None, ids: list[str] | None = None, limit: int = 200) -> list[dict[str, Any]]:

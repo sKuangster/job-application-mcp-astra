@@ -1074,11 +1074,17 @@
       return !(w < 30 || h < 30);
     }
     function detectCaptcha(visText) {
-      var res = { present: false, kind: null, interactive: false, detail: null };
+      // Vendor code and checkbox/anchor frames are commonly present before any
+      // challenge is shown. Preserve that diagnostic signal without calling it
+      // a blocking CAPTCHA.
+      var res = { present: false, library_detected: false, widget_present: false,
+        challenge_blocking: false, kind: null, interactive: false, detail: null, evidence: [] };
       var href = String(win.location && win.location.href || "");
       if (CAPTCHA_FRAME_SELF_RE.test(href)) {
-        return { present: true, kind: kindFromUrl(href), interactive: true, detail: "captcha frame" };
+        return { present: true, library_detected: true, widget_present: true, challenge_blocking: true,
+          kind: kindFromUrl(href), interactive: true, detail: "captcha frame", evidence: ["captcha-frame"] };
       }
+      var strongChallengeText = /(?:complete|perform|pass) (?:the )?(?:captcha|security check|human verification)|(?:please )?(?:verify|confirm|prove) (?:that )?you(?:'re| are) (?:a )?human|checking (?:that )?you(?:'re| are) not a robot|unusual traffic from your (?:computer|network)|robot check/i;
       var frames = queryAll("iframe");
       for (var i = 0; i < frames.length; i++) {
         var f = frames[i];
@@ -1087,30 +1093,39 @@
         var isCap = CAPTCHA_URL_RE.test(src) || /recaptcha|hcaptcha|captcha|turnstile|arkose|funcaptcha/i.test(title + " " + src);
         if (!isCap) continue;
         res.present = true;
+        res.library_detected = true;
+        res.widget_present = true;
+        res.evidence.push("vendor-iframe");
         res.kind = res.kind || kindFromUrl(src + " " + title);
         if (f.closest(".grecaptcha-badge") || /[?&]size=invisible/.test(src)) continue;
         if (f.closest("[data-size=invisible]") && !/frame=challenge|bframe/.test(src)) continue;
-        if (iframeVisibleSize(f)) {
+        var challengeFrame = /(?:bframe|frame=challenge|challenge|arkose|funcaptcha)/i.test(src + " " + title);
+        if (iframeVisibleSize(f) && (challengeFrame || strongChallengeText.test(visText))) {
           res.interactive = true;
+          res.challenge_blocking = true;
           res.kind = kindFromUrl(src + " " + title);
           res.detail = (title || src).slice(0, 120);
+          res.evidence.push(challengeFrame ? "challenge-frame" : "challenge-prompt");
           return res;
         }
       }
       var widgets = queryAll(".g-recaptcha, .h-captcha, .cf-turnstile, #FunCaptcha, [data-sitekey], .grecaptcha-badge, script[src*='recaptcha'], script[src*='hcaptcha'], script[src*='turnstile']");
       if (widgets.length) {
         res.present = true;
+        res.library_detected = true;
+        res.widget_present = widgets.some(function (w) { return tag(w) !== "SCRIPT"; });
+        res.evidence.push(res.widget_present ? "vendor-widget" : "vendor-library");
         res.kind = res.kind || kindFromUrl(widgets.map(function (w) { return classOf(w) + " " + attr(w, "src"); }).join(" "));
       }
-      var turn = queryAll(".cf-turnstile").filter(function (w) { return visible(w) && w.querySelector("iframe"); });
-      if (turn.length) { res.interactive = true; res.kind = "turnstile"; res.detail = "cf-turnstile"; return res; }
       // Cloudflare interstitial challenge page
       var title2 = clean(document.title);
       if ((/^just a moment/i.test(title2) || /attention required/i.test(title2)) && /verify(ing)? you are (a )?human|checking (if the site connection is secure|your browser)|needs to review the security/i.test(visText)) {
-        return { present: true, kind: "cloudflare", interactive: true, detail: "cloudflare challenge page" };
+        return { present: true, library_detected: true, widget_present: true, challenge_blocking: true,
+          kind: "cloudflare", interactive: true, detail: "cloudflare challenge page", evidence: ["cloudflare-interstitial"] };
       }
       if (document.querySelector("#challenge-form, #cf-challenge-running, .cf-browser-verification, #challenge-stage") && /verify(ing)? you are (a )?human/i.test(visText)) {
-        return { present: true, kind: "cloudflare", interactive: true, detail: "cloudflare challenge page" };
+        return { present: true, library_detected: true, widget_present: true, challenge_blocking: true,
+          kind: "cloudflare", interactive: true, detail: "cloudflare challenge page", evidence: ["cloudflare-challenge"] };
       }
       // Vendor-neutral widgets and full-page human-verification interstitials.
       // Require a visible challenge-shaped container or strong imperative text;
@@ -1118,20 +1133,25 @@
       var generic = queryAll("[id*='captcha'], [class*='captcha'], [id*='challenge'], [class*='challenge'], [data-sitekey]").filter(function (w) {
         if (!visible(w) || w.closest(".grecaptcha-badge, [data-size=invisible]")) return false;
         var widgetText = textOf(w, null, { max: 500 });
-        if (!widgetText && !w.children.length && !attr(w, "data-sitekey")) return false;
+        if (!widgetText && !w.children.length) return false;
         var hay = norm([attr(w, "id"), classOf(w), attr(w, "role"), widgetText].join(" "));
-        return /captcha|human verification|security (check|challenge)|robot check|challenge-container|challenge-stage/.test(hay);
+        return /captcha|human verification|security (check|challenge)|robot check|challenge-container|challenge-stage/.test(hay) &&
+          (strongChallengeText.test(widgetText) || strongChallengeText.test(visText));
       });
       if (generic.length) {
         res.present = true;
+        res.widget_present = true;
+        res.challenge_blocking = true;
         res.interactive = true;
         res.kind = res.kind || kindFromUrl(generic.map(function (w) { return classOf(w) + " " + attr(w, "id"); }).join(" "));
         res.detail = "visible human-verification widget";
+        res.evidence.push("visible-challenge-widget");
         return res;
       }
-      var strongChallengeText = /(?:complete|perform|pass) (?:the )?(?:captcha|security check|human verification)|(?:please )?(?:verify|confirm|prove) (?:that )?you(?:'re| are) (?:a )?human|checking (?:that )?you(?:'re| are) not a robot|unusual traffic from your (?:computer|network)|robot check/i;
       if (strongChallengeText.test(visText) && visText.length < 12000) {
-        return { present: true, kind: res.kind || "unknown", interactive: true, detail: "human-verification page text" };
+        return { present: true, library_detected: res.library_detected, widget_present: res.widget_present,
+          challenge_blocking: true, kind: res.kind || "unknown", interactive: true,
+          detail: "human-verification page text", evidence: res.evidence.concat(["challenge-page-text"]) };
       }
       return res;
     }
@@ -1182,6 +1202,17 @@
       if (codeFields.length && passwords.length === 0 && n <= 3 && VERIFY_TEXT_RE.test(text)) return "verification";
       if (codeFields.length && passwords.length === 0 && n <= 2 && buttons.some(function (b) { return b.kind === "verify"; })) return "verification";
       if (n === 0 && /check your (email|inbox)|verification link|verify your email|confirm your email/i.test(text)) return "verification";
+      // Passwordless/passkey pages often have no inputs at all. Treat a strong
+      // authentication title, URL, or prompt plus an auth control as login so
+      // the runner asks the user instead of sending the page to model reasoning.
+      var authHead = norm([document.title, ctxInfo.heading, String(win.location && win.location.href || "")].join(" "));
+      var authText = norm(text.slice(0, 2500));
+      var passwordless = /passkey|web ?authn|fingerprint|face recognition|device confirmation|security key/.test(authHead + " " + authText);
+      var loginContext = /(?:^|\b)(log ?in|sign ?in|applicant login|candidate login)(?:\b|$)/.test(authHead);
+      var authButton = buttons.some(function (b) {
+        return /continue|use password|log ?in|sign ?in|passkey|fingerprint|face recognition/i.test(b.text);
+      });
+      if ((passwordless || loginContext) && (authButton || fields.some(function (f) { return f.type === "email"; }))) return "login";
       if (passwords.length >= 2) return "signup";
       if (passwords.length === 1) {
         var conf = fields.some(function (f) { return f.type === "password" && /confirm|verify|re-?enter|repeat|again/i.test(f.label + " " + f.name); });
@@ -1305,7 +1336,9 @@
       if (isCaptchaFrame()) {
         return {
           url: url, title: clean(document.title), frames: 1, ats: "generic", page_kind: "captcha", heading: "", step: null,
-          fields: [], buttons: [], errors: [], captcha: { present: true, kind: kindFromUrl(url), interactive: true, detail: "captcha frame" },
+          fields: [], buttons: [], errors: [], captcha: { present: true, library_detected: true,
+            widget_present: true, challenge_blocking: true, kind: kindFromUrl(url), interactive: true,
+            detail: "captcha frame", evidence: ["captcha-frame"] },
           confirmation: { detected: false, text: null }, signals: { has_password: false, has_submit: false, text_hash: fnv1a("") },
           fingerprint: fnv1a(url), field_count: 0
         };
@@ -2012,6 +2045,19 @@
       await sleep(0);
       return out;
     }
+    function highlight(id) {
+      if (isCaptchaFrame()) throw fail("UNSUPPORTED", "refusing to interact with a captcha frame");
+      var el = findById(id);
+      if (!el) throw fail("ELEMENT_NOT_FOUND", "no element with id " + id);
+      if (inCaptcha(el)) throw fail("UNSUPPORTED", "refusing to highlight inside a captcha widget");
+      scrollTo(el);
+      var oldOutline = el.style.outline;
+      var oldOffset = el.style.outlineOffset;
+      el.style.outline = "3px solid #ff8c00";
+      el.style.outlineOffset = "3px";
+      setTimeout(function () { el.style.outline = oldOutline; el.style.outlineOffset = oldOffset; }, 1200);
+      return { ok: true, element_id: id, tag: tag(el).toLowerCase(), text: elementText(el).slice(0, 120) };
+    }
     var CLICKABLE = "button, a[href], input[type=submit], input[type=button], [role=button], [role=link], [role=tab], [role=menuitem], [role=option], label, summary, [onclick], [data-automation-id]";
     async function clickText(text, exact) {
       if (isCaptchaFrame()) throw fail("UNSUPPORTED", "refusing to interact with a captcha frame");
@@ -2135,6 +2181,7 @@
       click: click,
       clickText: clickText,
       clickPoint: clickPoint,
+      highlight: highlight,
       extractText: extractText,
       waitQuiet: waitQuiet,
       _ctx: ctx

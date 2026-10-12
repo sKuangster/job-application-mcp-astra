@@ -46,6 +46,8 @@ browser:
   close_tab_on: terminal              # terminal | submitted | never
   bridge_wait_timeout: 30
   focus_new_windows: false
+  test_one_mode: headed                 # extension-backed browser is visible; true headless is unsupported
+  debug_action_delay_ms: 0              # default delay between browser actions in watch/debug mode
 
 reasoning:
   provider: mcp                       # mcp = Astra answers via MCP (default) | openai = unattended API | none

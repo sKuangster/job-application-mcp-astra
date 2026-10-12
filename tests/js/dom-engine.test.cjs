@@ -638,6 +638,40 @@ test("captcha: vendor-neutral human-verification page is detected without help-c
   ordinary.window.close();
 });
 
+test("captcha: an embedded hCaptcha widget on a login page is diagnostic, not blocking", () => {
+  const login = new JSDOM(
+    '<!doctype html><title>Sign in</title><main><h1>Sign in</h1><form>' +
+    '<label>Email <input type="email" name="email"></label>' +
+    '<label>Password <input type="password" name="password"></label>' +
+    '<div class="h-captcha" data-sitekey="site-key"><iframe title="hCaptcha checkbox" ' +
+    'src="https://newassets.hcaptcha.com/captcha/v1/anchor"></iframe></div>' +
+    '<button type="submit">Sign in</button></form></main>',
+    { url: 'https://careers.example/login', pretendToBeVisual: true });
+  const s = h.engineFor(login.window.document).scan({});
+  assert.equal(s.page_kind, "login");
+  assert.equal(s.captcha.present, true);
+  assert.equal(s.captcha.library_detected, true);
+  assert.equal(s.captcha.widget_present, true);
+  assert.equal(s.captcha.challenge_blocking, false);
+  assert.equal(s.captcha.interactive, false);
+  login.window.close();
+});
+
+test("login: passwordless iCIMS passkey prompt is authentication, not an unknown page", () => {
+  const passkey = new JSDOM(
+    '<!doctype html><title>Log in to Johns Hopkins APL</title><main>' +
+    '<h1>Use fingerprint or face recognition to login | Applicant Tracking</h1>' +
+    '<p>Press the button below and follow your browser steps to log in.</p>' +
+    '<p>Awaiting device confirmation</p><button>Continue</button><button>Use password</button></main>',
+    { url: 'https://login.icims.com/u/mfa-webauthn-platform-challenge?state=secret', pretendToBeVisual: true });
+  const s = h.engineFor(passkey.window.document).scan({});
+  assert.equal(s.page_kind, "login");
+  assert.equal(s.fields.length, 0);
+  assert.ok(s.buttons.some(b => b.text === "Use password"));
+  assert.equal(s.captcha.interactive, false);
+  passkey.window.close();
+});
+
 test("verification: signup -> code page -> application -> confirmation; link page", async () => {
   const pg = await h.loadPage(srv.base + "/verification/index.html");
   const { engine } = pg;

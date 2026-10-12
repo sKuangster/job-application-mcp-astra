@@ -136,7 +136,16 @@ desktop notification appears when one starts waiting (for example, a CAPTCHA).
 
 Each application gets **its own Firefox window**, owned by exactly one application at a time, so
 workers never touch each other's pages. Your normal browsing stays untouched. Existing Firefox
-logins and cookies are reused, which is why it runs in your real profile.
+logins and cookies are reused, which is why it runs in the Firefox profile where the extension is
+installed. ApplyPilot does not launch another Firefox process, use private browsing, clear cookies,
+or copy cookies/tokens into SQLite or logs. Do not run an independent Firefox process against the
+same profile directory.
+
+The installed extension requests HTTP/HTTPS site access at install time. If Firefox reports missing
+host permission after an extension upgrade or a cross-domain authentication redirect, reload or
+reinstall the extension, accept its site-access request, and reload the controlled tab. ApplyPilot
+checks this before dynamic injection and parks the one application with an actionable permission
+message; it does not reinterpret the failure as a CAPTCHA.
 
 ---
 
@@ -198,7 +207,11 @@ concurrent applications become one item, and company research is fetched once pe
 
 **Fully unattended (optional):** set `reasoning.provider: openai` in `settings.yaml` and
 `OPENAI_API_KEY` in `.env`; the backend then answers its own reasoning queue through the API
-(same validation), with no chat session needed.
+(same validation), with no chat session needed. OpenAI responses use a strict JSON schema when the
+endpoint supports it, are checked again against the queued item, and get at most two bounded repair
+attempts. Exhausted repairs move the application to **NEEDS_USER** with diagnostics instead of
+leaving it blocked in **APPLYING**. Watch Mode reports request, retry, and recovery events using
+structural metadata only; prompts, answers, credentials, and secret URL parameters are not printed.
 
 ---
 
@@ -214,6 +227,61 @@ concurrent applications become one item, and company research is fetched once pe
 
 Dashboard: the extension's **Open Dashboard**, or `http://127.0.0.1:8765/ui/dashboard.html#token=<APPLYPILOT_TOKEN>`.
 
+### Safely test one imported job
+
+`test-one` never synchronizes GitHub or fetches a Simplify listing. By default it selects an
+active, already-imported job with a stored employer URL and **no application record**, checks
+deterministic eligibility, and
+persists a claim scope so prep workers, browser workers, reasoning, CAPTCHA recovery and
+housekeeping can touch only that application. The scope survives backend restarts, and a
+restart always leaves the autopilot stopped.
+
+Dry-run output explicitly says whether a selection is `NEW` or `EXISTING`. Default selection
+never falls back to one of the existing queued/in-progress applications; if no eligible new job
+exists it reports that clearly. An explicit `--job-id` may inspect or safely continue an existing
+non-terminal application, but never resets it. A real run also requires the Firefox extension to
+be connected before it creates an application record or starts the scope; dry-run does not.
+
+```bash
+# Starts the backend. This alone does not start the autopilot.
+applypilot run
+
+# In another terminal, read-only: selects and prints a candidate; no database
+# or website changes.
+applypilot test-one --dry-run --no-sync
+
+# In another terminal: creates at most one application record and may open/interact
+# with the stored external employer URL. auto_submit: false stops at final review.
+applypilot test-one --no-sync
+
+# Or select one exact existing database job.
+applypilot test-one --job-id JOB_ID --no-sync
+
+# Observe the exact controlled Firefox tab, stream events, highlight targets,
+# and delay real browser actions by 500 ms.
+applypilot test-one --job-id JOB_ID --headed --watch --slow-mo 500 --no-sync
+```
+
+`test-one` defaults to `--headed` (or `browser.test_one_mode` in settings): it opens or reuses the
+extension-owned tab, activates it, focuses its Firefox window, and reports its window ID, tab ID,
+URL, and focus confirmation. `--headless` is deliberately rejected: an extension attached to an
+already-running user Firefox profile cannot provide genuine headless execution, and hiding that tab
+would be misleading. No second, disconnected browser is launched.
+
+Without `--watch`, when the test parks for CAPTCHA, missing information, or final review, the CLI
+stops the autopilot and leaves the single-job scope in place. `applypilot resume` continues that
+same scoped application. With `--watch`, CAPTCHA, manual-login, and reasoning waits remain live so
+bounded output repair and read-only page polling can complete. If the owned tab is closed, only that
+same application's tab is reopened, starting from its stored job URL instead of an expired
+authentication redirect. An explicit normal
+`applypilot start ...` made while stopped
+leaves test mode; it is the deliberate operation that permits backlog processing again.
+
+During `applypilot run`, the first Ctrl+C persistently stops workers but keeps the API alive.
+The second Ctrl+C gracefully exits the backend, regardless of how much time passed. You can
+also exit it from another terminal with `applypilot shutdown`. SIGTERM stops the autopilot
+and gracefully shuts down in one step.
+
 ### Backlog mode vs new-jobs mode
 
 * **Backlog** (`start_autopilot(mode="backlog")`): queues every **open** job that has never been
@@ -226,15 +294,12 @@ Jobs keep durable identities (Simplify id, ATS posting id, normalized URLs, comp
 aliases), so formatting changes never create duplicates. Ineligible jobs are re-checked only if
 their listing data materially changes. Submitted or skipped jobs are never reconsidered.
 
-### Safe first run (one application)
+### Review the test application
 
-1. Keep `automation.auto_submit: false` (the default).
-2. `applypilot apply-url "https://simplify.jobs/p/<id>"` (or Astra `apply_to_url`), then `applypilot start --no-sync`.
-3. Answer Astra's questions (or let Astra do it). The application stops at **READY_TO_SUBMIT** with
-   its window open. Review every field in Firefox and in the dashboard's Questions & Answers tab.
-4. Click **Submit** in the dashboard (or `application_action(submit)`). The validation gate runs again,
-   then it submits and records the confirmation evidence.
-5. When you trust it, set `auto_submit: true`.
+Keep `automation.auto_submit: false`. After `test-one` reaches **READY_TO_SUBMIT**, review every
+field in Firefox and in the dashboard's Questions & Answers tab. Nothing is submitted until you
+explicitly click **Submit** in the dashboard (or request `application_action(submit)`); the validation
+and duplicate gates run again before any click on the employer site.
 
 ### Pausing, stopping, resuming
 
@@ -242,21 +307,27 @@ their listing data materially changes. Submitted or skipped jobs are never recon
   submissions start**. State is persisted.
 * **Stop**: same, and workers go idle with leases released.
 * **Resume**: continues from the persisted state of every application (completed steps are not redone).
-* Killing the process is also safe. On restart, expired leases are recovered, tabs are reopened if
-  needed, and an application that was mid-submission is **never re-submitted blindly**: it is
-  checked for confirmation, and otherwise marked SUBMISSION_UNCONFIRMED for you to verify.
+* Killing the process is also safe. On restart, the autopilot stays **STOPPED** until an explicit
+  start/resume, expired leases are recovered, and an application that was mid-submission is **never
+  re-submitted blindly**: it is checked for confirmation, and otherwise marked
+  SUBMISSION_UNCONFIRMED for you to verify.
 
 ### CAPTCHA workflow
 
-ApplyPilot **never** solves or bypasses CAPTCHAs. When a visible challenge appears (invisible
-reCAPTCHA badges are ignored), only that application moves to **WAITING_FOR_CAPTCHA**. Its state,
+ApplyPilot **never** solves or bypasses CAPTCHAs. No CAPTCHA-solver dependency or integration is
+installed in this repository. Detection records vendor-library presence, widget presence, and a
+genuinely blocking challenge separately; a loaded hCaptcha script, embedded checkbox/anchor, or
+invisible reCAPTCHA badge does not by itself create a wait. When a visible blocking challenge
+appears, only that application moves to **WAITING_FOR_CAPTCHA**. Its state,
 page evidence and resume point are persisted, its worker lease is released, and other workers keep
 going. A Windows/Firefox notification identifies the company and role; clicking it focuses the owned
 application window when possible. Complete only the challenge. The watcher performs periodic
 read-only DOM scans, verifies that a recognizable application page remains, and resumes the worker
 automatically—there is no Resume button to press.
 
-After the challenge clears, ApplyPilot re-scans and revalidates the page. A CAPTCHA that demonstrably
+After the challenge clears, ApplyPilot re-scans and revalidates the page. A remaining login or signup
+page moves to **ACCOUNT_REQUIRED**; solving a challenge is never treated as completing authentication.
+A CAPTCHA that demonstrably
 blocked the first submit click (same final form, URL, fingerprint and Submit button) causes that
 reserved attempt to be aborted, followed by the normal validation and submission gate. If delivery
 of the earlier click is uncertain, ApplyPilot only inspects for confirmation and never clicks Submit
@@ -267,8 +338,12 @@ remain recoverable rather than becoming FAILED.
 
 * **Missing fact**: the dashboard shows the exact question and the config path to fill. Answer it
   inline (optionally "remember for future applications"), or edit the YAML and Resume.
-* **Login / verification**: set `APPLYPILOT_ACCOUNT_PASSWORD` (and IMAP for automatic email codes and
-  links). Otherwise sign in or verify manually and press Resume.
+* **Login / verification**: password, passwordless, passkey/WebAuthn, fingerprint/face-recognition,
+  security-key, and alternative email/password prompts are classified as authentication pages. The
+  exact owned tab is focused for manual sign-in and passwords
+  are neither captured nor logged. Read-only scans detect successful login/navigation and resume the
+  same application automatically. Outside Watch Mode, configured account/IMAP automation remains
+  available; otherwise sign in manually and press Resume.
 * **Validation errors** that persist after automatic retries (including alternate value formats)
   are shown with the site's messages.
 

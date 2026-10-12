@@ -45,7 +45,7 @@
   };
   var KIND_PRIORITY = ["captcha", "confirmation", "already_applied", "closed", "verification", "signup", "login", "form", "job_description", "error", "unknown"];
   var TAB_ACTIONS = { open: 1, navigate: 1, wait_ready: 1, tab_info: 1, focus: 1, close: 1, screenshot: 1, list_owned: 1 };
-  var CONTENT_ACTIONS = { scan: 1, fill: 1, upload: 1, click: 1, click_text: 1, click_point: 1, extract_text: 1 };
+  var CONTENT_ACTIONS = { scan: 1, fill: 1, upload: 1, click: 1, click_text: 1, click_point: 1, highlight: 1, extract_text: 1 };
 
   function BridgeError(code, message, details) {
     var e = new Error(message);
@@ -194,7 +194,7 @@
       o.url = url;
       this._persist();
     }
-    this._emit("tab_navigated", appId, { url: url });
+    this._emit("tab_navigated", appId, { url: url, tab_id: tabId, window_id: o.window_id });
   };
 
   // Per-app mutex: run fn after all previously queued work of the same app.
@@ -301,8 +301,10 @@
       }
       case "focus": {
         var tf = await this._ownedTab(appId);
-        await this.driver.focus(tf.own.tab_id, tf.own.window_id);
-        return { ok: true };
+        var focused = await this.driver.focus(tf.own.tab_id, tf.own.window_id);
+        var verified = await this._ownedTab(appId);
+        return Object.assign({ ok: true, tab_id: verified.own.tab_id, window_id: verified.own.window_id,
+          url: verified.tab.url, title: verified.tab.title || "" }, focused || {});
       }
       case "close": {
         var tc = await this._ownedTab(appId);
@@ -335,6 +337,11 @@
         var tp = await this._ownedTab(appId);
         return this._sendFrame(tp.own.tab_id, 0, "click_point", { x: Number(p.x), y: Number(p.y) }, remaining());
       }
+      case "highlight": {
+        var hid = parseElementId(p.element_id);
+        var th = await this._ownedTab(appId);
+        return this._sendFrame(th.own.tab_id, hid.frameId, "highlight", { element_id: hid.local }, remaining());
+      }
       case "extract_text": return this._extractText(appId, p, remaining);
       default:
         throw BridgeError("UNSUPPORTED", "unknown action " + action);
@@ -353,6 +360,7 @@
       if (tab) {
         tabId = existing.tab_id;
         await this.driver.navigate(tabId, url);
+        if (p.active !== false) await this.driver.focus(tabId, existing.window_id);
       } else {
         this.owned.delete(appId);
       }
@@ -424,7 +432,8 @@
     var top = answers.filter(function (a) { return a.frameId === 0; })[0];
     if (!top || top.error) {
       var e = top && top.error;
-      throw BridgeError(e && e.code === "TIMEOUT" ? "TIMEOUT" : "CONTENT_SCRIPT_UNAVAILABLE", "top frame did not answer scan: " + (e && e.message || "no answer"));
+      if (e && e.code && e.code !== "INTERNAL") throw e;
+      throw BridgeError("CONTENT_SCRIPT_UNAVAILABLE", "top frame did not answer scan: " + (e && e.message || "no answer"));
     }
     var snaps = answers.filter(function (a) { return a.result; }).map(function (a) { return { frameId: a.frameId, s: a.result }; });
     var merged = mergeSnapshots(snaps, payload, t.tab);

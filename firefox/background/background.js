@@ -26,7 +26,7 @@
     try { console.debug.apply(console, ["[ApplyPilot bg]"].concat([].slice.call(arguments))); } catch (e) { /* ignore */ }
   }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function err(code, message) { var e = new Error(message); e.code = code; return e; }
+  function err(code, message, details) { var e = new Error(message); e.code = code; if (details) e.details = details; return e; }
 
   // ------------------------------------------------------------------ driver
   function FirefoxDriver() {
@@ -132,6 +132,10 @@
   FirefoxDriver.prototype.focus = async function (tabId, windowId) {
     await browser.tabs.update(tabId, { active: true });
     if (windowId != null) await browser.windows.update(windowId, { focused: true });
+    var tab = await browser.tabs.get(tabId);
+    var win = windowId != null ? await browser.windows.get(windowId) : null;
+    return { confirmed: !!(tab.active && (!win || win.focused)), tab_active: !!tab.active,
+      window_focused: win ? !!win.focused : null };
   };
 
   FirefoxDriver.prototype.close = async function (tabId) {
@@ -160,6 +164,23 @@
   };
 
   FirefoxDriver.prototype._inject = async function (tabId, frameId) {
+    var frames = await this.getFrames(tabId);
+    var frame = frames.filter(function (f) { return f.frameId === frameId; })[0];
+    var frameUrl = frame && frame.url || "";
+    if (!/^https?:/i.test(frameUrl)) {
+      throw err("CONTENT_SCRIPT_UNAVAILABLE", "Firefox does not allow ApplyPilot to script " + (frameUrl || "this page"));
+    }
+    var origin;
+    try { origin = new URL(frameUrl).origin + "/*"; } catch (e) { origin = null; }
+    if (origin && browser.permissions && browser.permissions.contains) {
+      var allowed = await browser.permissions.contains({ origins: [origin] });
+      if (!allowed) {
+        throw err("HOST_PERMISSION_REQUIRED", "ApplyPilot needs Firefox site access for " + origin +
+          ". Grant site access from Firefox's Extensions panel, or reinstall the current extension build and " +
+          "accept its requested access, then reload this tab.",
+          { origin: origin, tab_id: tabId, frame_id: frameId });
+      }
+    }
     for (var i = 0; i < CONTENT_FILES.length; i++) {
       await browser.tabs.executeScript(tabId, { file: CONTENT_FILES[i], frameId: frameId, runAt: "document_idle", matchAboutBlank: true });
     }
@@ -188,6 +209,7 @@
     try {
       await self._inject(tabId, frameId);
     } catch (e) {
+      if (e && e.code) throw e;
       throw err("CONTENT_SCRIPT_UNAVAILABLE", "injection failed: " + (e && e.message || e));
     }
     try {

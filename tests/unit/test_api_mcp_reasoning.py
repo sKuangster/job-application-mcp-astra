@@ -14,6 +14,7 @@ from applypilot.bridge import BrowserBridge
 from applypilot.config import ConfigError, load_config
 from applypilot.db import Database
 from applypilot.engine.scheduler import Engine
+from applypilot.providers import OpenAIProvider, ProviderOutputError
 from applypilot.reasoning import ReasoningService
 from applypilot.research import ResearchService, extract_relevant
 from applypilot.security import redact, redact_url
@@ -169,6 +170,113 @@ async def test_get_batch_long_poll_wakes_on_enqueue(rs, db):
     assert len(batch["items"]) == 1
 
 
+async def test_page_batch_redacts_legacy_auth_state_without_rewriting_history(rs, db):
+    app = _app(db, company="Auth Co", url="https://jobs.example/apply")
+    raw_url = "https://login.example/mfa/webauthn?state=oauth-state-value&mode=passkey"
+    rs.enqueue(app_id=app["id"], kind="page", payload={
+        "url": raw_url, "page": {"url": raw_url, "title": "Use fingerprint or face recognition to login"},
+        "dedupe_key": "legacy-auth-url",
+    }, field_key="__page__auth")
+
+    batch = await rs.get_batch(owner="openai", wait_seconds=0)
+
+    encoded = json.dumps(batch)
+    assert "oauth-state-value" not in encoded
+    assert "passkey" in encoded
+    # Durable evidence is left intact; redaction happens at the external-provider boundary.
+    assert "oauth-state-value" in db.reasoning_items()[0]["payload"]["url"]
+
+
+@pytest.mark.asyncio
+async def test_openai_page_reasoning_uses_strict_schema_and_repairs_invalid_action(rs, db, cfg, monkeypatch):
+    app = _app(db, company="Auth Co", url="https://login.example/passkey")
+    db.update_application(app["id"], state="APPLYING", blocked_on="reasoning")
+    rs.enqueue(app_id=app["id"], kind="page", payload={"problem": "unknown passkey page", "dedupe_key": "page-auth"},
+               field_key="__page__auth")
+    batch = await rs.get_batch(owner="openai", wait_seconds=0)
+    item_id = batch["items"][0]["item_id"]
+    bodies = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        bodies.append(body)
+        result = ({"item_id": item_id, "action": {"type": "open_url"}, "reason": "try another page"}
+                  if len(bodies) == 1 else {"item_id": item_id, "needs_user": "Complete passkey login manually"})
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps({"results": [result]})}}], "usage": {"prompt_tokens": 10, "completion_tokens": 5}})
+
+    monkeypatch.setenv(cfg.settings.reasoning.openai.api_key_env, "test-key")
+    provider = OpenAIProvider(cfg, rs, db,
+                              client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    results = await provider.complete(batch)
+
+    assert results == [{"item_id": item_id, "needs_user": "Complete passkey login manually"}]
+    fmt = bodies[0]["response_format"]
+    assert fmt["type"] == "json_schema" and fmt["json_schema"]["strict"] is True
+    action_schema = json.dumps(fmt["json_schema"]["schema"])
+    assert "click_button" in action_schema and "open_url" not in action_schema
+    assert "failed application validation" in bodies[1]["messages"][-1]["content"]
+    assert any(e["event_type"] == "provider_validation_failed" for e in db.events(app["id"]))
+
+
+@pytest.mark.asyncio
+async def test_exhausted_provider_repairs_park_application_in_recoverable_state(rs, db, cfg, monkeypatch):
+    app = _app(db, company="Stall Co", url="https://login.example/webauthn")
+    db.update_application(app["id"], state="APPLYING", blocked_on="reasoning")
+    rs.enqueue(app_id=app["id"], kind="page", payload={"problem": "unknown auth page", "dedupe_key": "stalled"},
+               field_key="__page__stalled")
+    batch = await rs.get_batch(owner="openai", wait_seconds=0)
+    item_id = batch["items"][0]["item_id"]
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        bad = {"results": [{"item_id": item_id, "action": {"type": "open_url"}}]}
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps(bad)}}]})
+
+    monkeypatch.setenv(cfg.settings.reasoning.openai.api_key_env, "test-key")
+    provider = OpenAIProvider(cfg, rs, db,
+                              client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    with pytest.raises(ProviderOutputError) as exc:
+        await provider.complete(batch)
+    rs.fail_provider_items([item_id], str(exc.value), provider="openai")
+
+    current = db.get_application(app["id"])
+    assert current["state"] == "NEEDS_USER" and current["blocked_on"] is None
+    assert current["data"]["needs_user"]["kind"] == "reasoning"
+    assert db.reasoning_items(ids=[item_id])[0]["status"] == "FAILED"
+    events = db.events(app["id"])
+    assert sum(e["event_type"] == "provider_validation_failed" for e in events) == 3
+    assert any(e["event_type"] == "reasoning_recovery" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_openai_falls_back_to_validated_json_mode_when_schema_is_unsupported(rs, db, cfg, monkeypatch):
+    app = _app(db, company="Compat Co", url="https://compat.example")
+    rs.enqueue(app_id=app["id"], kind="page", payload={"problem": "unknown", "dedupe_key": "compat"},
+               field_key="__page__compat")
+    batch = await rs.get_batch(owner="openai", wait_seconds=0)
+    item_id = batch["items"][0]["item_id"]
+    formats = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        formats.append(body["response_format"]["type"])
+        if len(formats) == 1:
+            return httpx.Response(400, json={"error": {"message": "response_format json_schema unsupported"}})
+        good = {"results": [{"item_id": item_id, "needs_user": "Handle this page manually"}]}
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps(good)}}]})
+
+    monkeypatch.setenv(cfg.settings.reasoning.openai.api_key_env, "test-key")
+    provider = OpenAIProvider(cfg, rs, db,
+                              client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    results = await provider.complete(batch)
+
+    assert formats == ["json_schema", "json_object"]
+    assert results[0]["needs_user"]
+    assert any(e["event_type"] == "structured_output_fallback" for e in db.events(app["id"]))
+
+
 # ---------------------------------------------------------------- research
 async def test_research_single_flight_and_cache(cfg, db):
     calls = []
@@ -227,6 +335,7 @@ def test_redaction():
     assert redact({"password": "x", "a": {"api_key": "k"}, "b": [{"token": "t"}]}) == \
         {"password": "[REDACTED]", "a": {"api_key": "[REDACTED]"}, "b": [{"token": "[REDACTED]"}]}
     assert "secret123" not in redact_url("https://x.example/verify?token=secret123&id=4")
+    assert "oauth-state-value" not in redact_url("https://login.example/mfa?state=oauth-state-value&mode=passkey")
 
 
 def test_parse_verification_code_and_link():

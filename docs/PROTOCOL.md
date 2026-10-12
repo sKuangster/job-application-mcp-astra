@@ -58,7 +58,7 @@ tab fails with `NO_OWNED_TAB` (except `open`, which creates the tab).
 
 `NO_OWNED_TAB`, `TAB_CLOSED`, `TIMEOUT`, `ELEMENT_NOT_FOUND`, `NO_OPTION_MATCH`,
 `DISABLED`, `VERIFY_FAILED`, `NAVIGATION_FAILED`, `CONTENT_SCRIPT_UNAVAILABLE`,
-`UNSUPPORTED`, `BAD_REQUEST`, `INTERNAL`.
+`HOST_PERMISSION_REQUIRED`, `UNSUPPORTED`, `BAD_REQUEST`, `INTERNAL`.
 
 ### Actions
 
@@ -70,7 +70,7 @@ Tab-level (handled by the background script):
 | `navigate` | `url` | `{url, title}` after load |
 | `wait_ready` | `timeout_ms` (default 20000), `quiet_ms` (default 600) | `{url, title, ready: bool}` — document complete in top frame and no DOM mutations for `quiet_ms` |
 | `tab_info` | – | `{tab_id, window_id, url, title, status}` |
-| `focus` | – | `{ok: true}` (activate tab, focus window) |
+| `focus` | – | `{ok, tab_id, window_id, url, title, confirmed, tab_active, window_focused}` (activate tab, focus window, and report verification) |
 | `close` | – | `{ok: true}`; releases ownership |
 | `screenshot` | `format: "jpeg"\|"png"`, `quality` | `{data_url, width?, height?}` (activates the owned tab in its window first) |
 | `list_owned` | – (no app_id) | `{owned: [{app_id, tab_id, window_id, url}]}` |
@@ -86,6 +86,7 @@ owned tab, aggregating results; element ids embed the frame id):
 | `click` | `element_id` | `{ok, href?}` (field or button id) |
 | `click_text` | `text`, `exact: bool` | `{ok, element_id}` — finds the best visible clickable element whose text matches |
 | `click_point` | `x`, `y` (CSS px in the top-frame viewport) | `{ok, tag, text}` — visual fallback, dispatches a click on `elementFromPoint` |
+| `highlight` | `element_id` | `{ok, element_id, tag, text}` — briefly outlines the action target for Watch Mode |
 | `extract_text` | `max_chars` | `{text, url, title}` (visible text of all frames, top first) |
 
 ### Element ids
@@ -107,7 +108,9 @@ element for the life of its document. The backend must re-scan after navigation.
   "fields": [Field],
   "buttons": [Button],
   "errors": [{"text": "…", "field_id": "0:12" | null}],
-  "captcha": {"present": false, "kind": null, "interactive": false, "detail": null},
+  "captcha": {"present": false, "library_detected": false, "widget_present": false,
+              "challenge_blocking": false, "kind": null, "interactive": false,
+              "detail": null, "evidence": []},
   "confirmation": {"detected": false, "text": null},
   "signals": {"has_password": false, "has_submit": true, "text_hash": "…"},
   "text": "visible text excerpt (only when include_text)",
@@ -249,10 +252,16 @@ message, data}`.
   could not match, `options` with the live option list (`NO_OPTION_MATCH`).
 * Field `hint` values: `combobox`, `listbox`, `buttons`, `greenhouse:react-select`, `workday:dropdown`,
   `workday:prompt`, `workday:date-segments`, `ashby:yesno`, `text-date:<format>`.
-* `captcha.present` may be true for invisible badges; only `captcha.interactive` (and
+* `captcha.present` may be true for a vendor library or embedded widget. Only
+  `captcha.challenge_blocking` / its compatibility alias `captcha.interactive` (and
   `page_kind: "captcha"`) means a human must act.
 * Interactive challenges park the application in `WAITING_FOR_CAPTCHA`. `retry_captcha` performs
-  one read-only scan; normal operation does this periodically and resumes automatically.
+  one read-only scan; normal operation does this periodically and resumes automatically. A cleared
+  challenge whose resulting page is still login/signup transitions to `ACCOUNT_REQUIRED`, not the
+  prior applying state.
+* Unattended provider results use strict schema output when supported, followed by application-level
+  validation and two repair attempts. Exhausted repairs produce a failed reasoning item plus an
+  explicit recoverable `NEEDS_USER` state.
 * Background runtime messages for extension pages: `bridge_status`, `bridge_reconnect`, `bridge_user_action`.
 * Requests arriving through a reverse proxy/tunnel (forwarding headers present) may only reach `/mcp`.
 * Test-only: the jsdom fake browser (`tests/js/fake_browser.cjs`) additionally accepts

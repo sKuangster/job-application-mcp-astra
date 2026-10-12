@@ -47,7 +47,7 @@ from applypilot.textutil import company_norm, stable_hash, title_norm
 
 log = logging.getLogger("applypilot.engine")
 RUNNING, PAUSED, STOPPED = "RUNNING", "PAUSED", "STOPPED"
-MODES = ("backlog", "new_jobs", "continuous")
+MODES = ("backlog", "new_jobs", "continuous", "test_one")
 
 
 class Engine:
@@ -77,6 +77,23 @@ class Engine:
     def mode(self) -> str:
         return str(self.db.meta_get("mode", "backlog"))
 
+    def test_application_id(self) -> str | None:
+        scope = self.db.execution_scope()
+        if scope and scope.get("kind") == "test_one":
+            return str(scope.get("application_id") or "") or None
+        return None
+
+    def application_browser_options(self, app_id: str) -> dict[str, Any]:
+        scope = self.db.execution_scope()
+        if scope and scope.get("kind") == "test_one" and scope.get("application_id") == app_id:
+            return {
+                "mode": scope.get("browser_mode", "headed"),
+                "watch": bool(scope.get("watch")),
+                "slow_mo_ms": int(scope.get("slow_mo_ms") or 0),
+            }
+        return {"mode": "headed", "watch": False,
+                "slow_mo_ms": self.cfg.settings.browser.debug_action_delay_ms}
+
     def should_yield(self) -> bool:
         return self.closing or self.control() != RUNNING
 
@@ -88,6 +105,16 @@ class Engine:
         if mode and mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
         if action in ("start", "resume"):
+            scope = self.db.execution_scope()
+            if scope and scope.get("kind") == "test_one" and mode != "test_one":
+                if action == "resume":
+                    mode = "test_one"
+                else:
+                    # A normal explicit start is the deliberate escape hatch from a
+                    # completed/stopped test scope. Never clear it implicitly at boot.
+                    if self.control() != STOPPED:
+                        raise ValueError("test-one is active; stop it before starting a normal automation mode")
+                    self.db.meta_delete("execution_scope")
             if self.cfg.settings.automation.stop_on_config_incomplete:
                 ready = self.cfg.readiness()
                 if not ready["ready"]:
@@ -113,6 +140,11 @@ class Engine:
         owner = f"backend-{self.boot_id}"
         if not self.db.acquire_lock("backend", owner, ttl=60):
             raise RuntimeError(f"another ApplyPilot backend is running ({self.db.lock_owner('backend')}); stop it first")
+        # RUNNING is never trusted across process death. This prevents a restart
+        # after a crash from silently draining a previously queued backlog.
+        if self.control() == RUNNING:
+            self.db.meta_set("control", STOPPED)
+            self.db.event(None, "control", "startup_stopped", "Autopilot held stopped after backend restart", {})
         released = self.db.release_all_leases(except_prefix=None)
         if released:
             log.info("released %d stale lease(s) from a previous run", released)
@@ -183,7 +215,8 @@ class Engine:
                     await self._sleep(2.0)
                     continue
                 app = self.db.claim(f"{worker_id}@{self.boot_id}", pool, lease_seconds=auto.worker_lease_timeout,
-                                    per_domain=auto.per_domain_concurrency, max_tabs=auto.max_open_application_tabs)
+                                    per_domain=auto.per_domain_concurrency, max_tabs=auto.max_open_application_tabs,
+                                    app_id=self.test_application_id())
                 if app is None:
                     await self._sleep(auto.idle_poll_seconds)
                     continue
@@ -306,7 +339,15 @@ class Engine:
         if event == "tab_closed" and app_id:
             self.db.event(app_id, "browser", "tab_closed", "Application tab was closed", data)
             with contextlib.suppress(Exception):
-                self.db.write(lambda c: c.execute("UPDATE applications SET tab_id=NULL, window_id=NULL WHERE id=?", (app_id,)))
+                app = self.db.get_application(app_id)
+                self.db.update_application(app_id, data={"tab_reopen_required": app["state"] not in TERMINAL},
+                                           tab_id=None, window_id=None)
+        if event == "tab_navigated" and app_id:
+            url = redact_url(str(data.get("url") or ""))
+            with contextlib.suppress(Exception):
+                self.db.update_application(app_id, current_url=url[:2000])
+                self.db.event(app_id, "browser", "tab_navigated", "Application tab navigated",
+                              {"url": url, "tab_id": data.get("tab_id"), "window_id": data.get("window_id")})
         if event == "hello":
             self.wake()
 
@@ -317,18 +358,28 @@ class Engine:
             with contextlib.suppress(Exception):
                 self.db.acquire_lock("backend", owner, ttl=60)
                 # Unblock applications whose reasoning finished but were never woken.
-                rows = self.db.query("SELECT id FROM applications WHERE blocked_on='reasoning'")
+                scoped = self.test_application_id()
+                rows = self.db.query("SELECT id FROM applications WHERE blocked_on='reasoning'" +
+                                     (" AND id=?" if scoped else ""), (scoped,) if scoped else ())
                 ready = [r["id"] for r in rows if not self.reasoning.open_items_for(r["id"])]
                 if ready:
                     self.db.unblock(ready)
                 # Reasoning that waited too long → let the application ask the user instead.
-                stale = self.db.query("SELECT id FROM reasoning_items WHERE status IN ('PENDING','LEASED') AND created_at < ?",
-                                      (time.time() - park_timeout,))
+                stale_sql = "SELECT DISTINCT r.id FROM reasoning_items r"
+                stale_params: list[Any] = []
+                if scoped:
+                    stale_sql += " JOIN reasoning_waiters w ON w.item_id=r.id"
+                stale_sql += " WHERE r.status IN ('PENDING','LEASED') AND r.created_at < ?"
+                stale_params.append(time.time() - park_timeout)
+                if scoped:
+                    stale_sql += " AND w.application_id=?"
+                    stale_params.append(scoped)
+                stale = self.db.query(stale_sql, stale_params)
                 for row in stale:
                     waiters = self.db.complete_reasoning(row["id"], {"needs_user": "No answer from Astra in time"}, status="FAILED")
                     self.db.unblock(w["application_id"] for w in waiters)
                 # Backlog completion detection.
-                if self.control() == RUNNING and self.mode() in ("backlog", "continuous"):
+                if self.control() == RUNNING and self.mode() in ("backlog", "continuous", "test_one"):
                     counts = self.db.claimable_counts()
                     active = self.db.query(
                         "SELECT COUNT(*) AS n FROM applications WHERE state NOT IN "
@@ -361,12 +412,36 @@ class Engine:
             await self._sleep(interval)
             if not self.bridge.connected:
                 continue
+            scoped = self.test_application_id()
             for app in self.db.needs_user():
-                info = app["data"].get("needs_user") or {}
-                if app["state"] != S.WAITING_FOR_CAPTCHA or info.get("kind") != "captcha":
+                if scoped and app["id"] != scoped:
                     continue
+                info = app["data"].get("needs_user") or {}
                 with contextlib.suppress(Exception):
-                    await self.retry_captcha_detection(app["id"])
+                    if app["state"] == S.WAITING_FOR_CAPTCHA and info.get("kind") == "captcha":
+                        await self.retry_captcha_detection(app["id"])
+                    elif app["state"] == S.NEEDS_USER and info.get("kind") == "login":
+                        await self.retry_login_detection(app["id"])
+
+    async def retry_login_detection(self, app_id: str) -> dict[str, Any]:
+        """Read the owned tab and resume after a manual sign-in has visibly completed."""
+        app = self.db.get_application(app_id)
+        info = app["data"].get("needs_user") or {}
+        if app["state"] != S.NEEDS_USER or info.get("kind") != "login":
+            raise InvalidTransition("application is not waiting for manual login")
+        if not self.bridge.connected or app_id not in self.bridge.owned:
+            return {"waiting": True, "browser_connected": self.bridge.connected,
+                    "window_owned": app_id in self.bridge.owned}
+        raw = await self.bridge.call(app_id, "scan", {}, timeout=15)
+        snap = PageSnapshot.model_validate(raw or {})
+        self.db.update_application(app_id, current_url=redact_url(snap.url)[:2000])
+        if snap.page_kind in {"login", "signup", "unknown", "error", "captcha"}:
+            return {"waiting": True, "page_kind": snap.page_kind}
+        out = self.resume_application(app_id, reason="manual login completed in Firefox")
+        self.db.event(app_id, "account", "login_completed",
+                      "Manual login completed; worker will resume automatically",
+                      {"url": redact_url(snap.url), "page_kind": snap.page_kind})
+        return {"waiting": False, "state": out["state"], "page_kind": snap.page_kind}
 
     @staticmethod
     def _valid_after_captcha(snap: PageSnapshot) -> bool:
@@ -448,7 +523,8 @@ class Engine:
                 "resume_url": current_url, "resume_page_kind": snap.page_kind,
                 "navigation_observed": navigation, "possible_false_positive": possible_false_positive,
             }
-            target = self.resume_target(current)
+            authentication_pending = snap.page_kind in {"login", "signup"}
+            target = S.ACCOUNT_REQUIRED if authentication_pending else self.resume_target(current)
             out = self.db.user_action(
                 app_id, target, reason="CAPTCHA cleared; automatic resume",
                 data={"captcha_resume_pending": resume, "captcha_wait": wait,
@@ -458,7 +534,7 @@ class Engine:
                           {"detected_at": detected_at, "resume_at": now, "time_waiting_seconds": duration,
                            "challenge_type": wait.get("challenge_type"), "navigation_observed": navigation,
                            "possible_false_positive": possible_false_positive, "resume_state": target,
-                           "url": current_url})
+                           "url": current_url, "authentication_pending": authentication_pending})
             self.wake()
             return {"waiting": False, "present": False, "valid_page": True, "state": out["state"],
                     "navigation_observed": navigation}
@@ -545,18 +621,29 @@ class Engine:
 
     async def open_application(self, app_id: str) -> dict[str, Any]:
         if app_id in self.bridge.owned:
-            await self.bridge.call(app_id, "focus", {}, timeout=10)
-            return {"focused": True}
+            focus = await self.bridge.call(app_id, "focus", {}, timeout=10)
+            tab = await self.bridge.call(app_id, "tab_info", {}, timeout=10)
+            return {"focused": True, "focus": focus, "tab": tab}
         app = self.db.get_application(app_id)
         job = self.db.get_job(app["job_id"]) or {}
-        url = app.get("current_url") or job.get("apply_url") or job.get("simplify_url") or job.get("direct_url")
+        # A closed authentication/redirect tab can contain an expired one-time URL.
+        # Restart this same application from its job URL when the close was observed;
+        # the bridge still allocates a fresh, exclusively-owned tab for ``app_id``.
+        reopen_required = bool((app.get("data") or {}).get("tab_reopen_required"))
+        job_url = job.get("apply_url") or job.get("simplify_url") or job.get("direct_url")
+        url = job_url if reopen_required else (app.get("current_url") or job_url)
         res = await self.bridge.call(app_id, "open", {"url": url, "strategy": "window", "active": True}, timeout=60)
+        focus = await self.bridge.call(app_id, "focus", {}, timeout=10)
+        tab = await self.bridge.call(app_id, "tab_info", {}, timeout=10)
         self.db.update_application(app_id, tab_id=(res or {}).get("tab_id"), window_id=(res or {}).get("window_id"),
                                    current_url=redact_url((res or {}).get("url") or url)[:2000])
-        return {"opened": True, "tab": res}
+        return {"opened": True, "focus": focus, "tab": tab or res}
 
     # ------------------------------------------------------------------ ingestion
     async def sync(self, mode: str = "backlog") -> dict[str, Any]:
+        if self.db.execution_scope():
+            raise ValueError("repository synchronization is disabled while a durable test-one scope exists; "
+                             "explicitly start a normal automation mode first")
         cfg = self.cfg
         src, ing = cfg.preferences.source, cfg.settings.ingestion
         run_id = self.db.start_ingest(mode, src.repository)
@@ -588,6 +675,91 @@ class Engine:
                       f"Sync ({mode}): {stats['fetched']} listings, {stats['new']} new, {stats['queued']} queued", stats)
         self.wake()
         return stats
+
+    def select_test_job(self, job_id: str | None = None) -> dict[str, Any]:
+        """Choose one locally stored, deterministically eligible listing without writes."""
+        from applypilot.eligibility import evaluate
+
+        # Default selection is deliberately stricter than explicit --job-id:
+        # never fall back to one of the user's existing queued/in-progress apps.
+        candidates = self.db.test_job_candidates(job_id, new_only=job_id is None)
+        for job in candidates:
+            decision = evaluate(job, self.cfg)
+            if decision.decision in ("eligible", "review"):
+                url = job.get("apply_url") or job.get("direct_url")
+                existing = bool(job.get("application_id"))
+                return {"job_id": job["id"], "company": job["company"], "title": job["title"],
+                        "source_url": url, "eligibility": decision.decision,
+                        "application_id": job.get("application_id"),
+                        "application_state": job.get("application_state"),
+                        "selection_status": "existing" if existing else "new",
+                        "has_existing_application": existing}
+        if job_id and self.db.get_job(job_id) is None:
+            raise KeyError(f"unknown job {job_id}")
+        if job_id:
+            raise ValueError("the requested job is not eligible for a safe test (it may be inactive, already "
+                             "submitted, duplicated, or lack a stored employer URL)")
+        raise ValueError("no eligible previously unprocessed imported job is available; test-one will not fall "
+                         "back to any existing queued or in-progress application")
+
+    async def start_test_one(self, job_id: str | None = None, *, dry_run: bool = False,
+                             browser_mode: str | None = None, watch: bool = False,
+                             slow_mo_ms: int | None = None) -> dict[str, Any]:
+        """Select and optionally run one existing job under a durable claim scope."""
+        browser_mode = browser_mode or self.cfg.settings.browser.test_one_mode
+        if browser_mode not in ("headed", "headless"):
+            raise ValueError("browser_mode must be headed or headless")
+        if browser_mode == "headless":
+            raise ValueError("headless mode is unsupported by the Firefox-extension browser backend; "
+                             "use --headed with a connected Firefox profile")
+        slow_mo_ms = self.cfg.settings.browser.debug_action_delay_ms if slow_mo_ms is None else int(slow_mo_ms)
+        if slow_mo_ms < 0 or slow_mo_ms > 10000:
+            raise ValueError("slow_mo_ms must be between 0 and 10000")
+        selected = self.select_test_job(job_id)
+        if dry_run:
+            return {**selected, "dry_run": True, "changed": False, "browser_mode": browser_mode,
+                    "watch": watch, "slow_mo_ms": slow_mo_ms}
+        if self.cfg.settings.automation.auto_submit:
+            raise ValueError("test-one requires automation.auto_submit: false")
+        if self.control() != STOPPED:
+            raise ValueError("stop the autopilot before starting test-one")
+        active = self.db.query("SELECT id FROM applications WHERE lease_until>=?", (time.time(),))
+        if active:
+            raise ValueError("workers still hold active leases; wait for them to stop before test-one")
+        if not self.bridge.connected:
+            raise ValueError("Firefox extension is not connected; open Firefox and connect the ApplyPilot "
+                             "extension before running test-one")
+        app_id = selected.get("application_id")
+        if app_id:
+            app = self.db.get_application(app_id)
+            if app["state"] in (S.SUBMITTED, S.SUBMITTING, S.SUBMISSION_UNCONFIRMED, S.INELIGIBLE, S.SKIPPED, S.FAILED):
+                raise ValueError(f"existing application is {app['state']}; test-one will not reset it")
+        else:
+            app, _ = self.db.create_application(selected["job_id"], mode="test_one")
+            app_id = app["id"]
+        scope = {"kind": "test_one", "application_id": app_id, "job_id": selected["job_id"],
+                 "browser_mode": browser_mode, "watch": watch, "slow_mo_ms": slow_mo_ms,
+                 "created_at": time.time()}
+        self.db.meta_set("execution_scope", scope)
+        browser: dict[str, Any] | None = None
+        if app_id in self.bridge.owned or selected.get("application_id"):
+            try:
+                browser = await self.open_application(app_id)
+                tab = (browser or {}).get("tab") or {}
+                self.db.event(app_id, "browser", "headed_visibility",
+                              "Focused the application tab for headed test mode",
+                              {"tab_id": tab.get("tab_id"), "window_id": tab.get("window_id"),
+                               "url": redact_url(tab.get("url")), "focus": (browser or {}).get("focus")})
+            except (BrowserError, BridgeUnavailable) as exc:
+                self.db.event(app_id, "browser", "focus_failed",
+                              "Could not confirm application-tab focus",
+                              {"error": str(exc)}, level="WARNING")
+                browser = {"focused": False, "error": str(exc)}
+        await self.set_control("start", "test_one")
+        self.wake()
+        return {**selected, "application_id": app_id, "application_state": self.db.get_application(app_id)["state"],
+                "dry_run": False, "changed": True, "scope": scope, "browser_mode": browser_mode,
+                "watch": watch, "slow_mo_ms": slow_mo_ms, "browser": browser}
 
     def add_manual_job(self, url: str, *, company: str | None = None, title: str | None = None,
                        location: str | None = None) -> dict[str, Any]:

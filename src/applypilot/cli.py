@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import os
 import shutil
+import signal
 import sqlite3
 import sys
 import time
@@ -128,8 +130,53 @@ def cmd_run(args: argparse.Namespace) -> int:
     readiness = cfg.readiness()
     if not readiness["ready"]:
         print("Configuration incomplete (autopilot will refuse to start): " + ", ".join(readiness["missing"]))
-    uvicorn.run(app, host=cfg.host, port=cfg.port, log_level="warning", ws_ping_interval=20, ws_ping_timeout=30)
+    server = TwoStageServer(uvicorn.Config(app, host=cfg.host, port=cfg.port, log_level="warning",
+                                           ws_ping_interval=20, ws_ping_timeout=30), app.state.engine)
+    app.state.shutdown_callback = server.request_shutdown
+    asyncio.run(server.serve())
     return 0
+
+
+class TwoStageServer:
+    """Small Uvicorn wrapper implementing persistent stop, then process shutdown."""
+
+    def __init__(self, config: Any, engine: Any):
+        import uvicorn
+        self.server = uvicorn.Server(config)
+        self.engine = engine
+        self._interrupts = 0
+
+    def request_shutdown(self) -> None:
+        self.engine.db.meta_set("control", "STOPPED")
+        self.engine.wake()
+        self.server.should_exit = True
+
+    def handle_signal(self, sig: int, _frame: Any = None) -> None:
+        if sig == signal.SIGTERM:
+            self.request_shutdown()
+            return
+        self._interrupts += 1
+        if self._interrupts == 1:
+            self.engine.db.meta_set("control", "STOPPED")
+            self.engine.wake()
+            print("\nAutopilot stopped. Backend is still running. Press Ctrl+C again to shut down the backend.",
+                  flush=True)
+        else:
+            self.server.should_exit = True
+
+    async def serve(self) -> None:
+        # Uvicorn's default first-SIGINT behavior exits the server. Replace only
+        # its signal-capture context; Uvicorn still performs normal lifespan shutdown.
+        @contextlib.contextmanager
+        def capture_signals():
+            old = {sig: signal.signal(sig, self.handle_signal) for sig in (signal.SIGINT, signal.SIGTERM)}
+            try:
+                yield
+            finally:
+                for sig, handler in old.items():
+                    signal.signal(sig, handler)
+        self.server.capture_signals = capture_signals  # type: ignore[method-assign]
+        await self.server.serve()
 
 
 def cmd_pair(args: argparse.Namespace) -> int:
@@ -273,6 +320,105 @@ def cmd_backup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_test_one(args: argparse.Namespace) -> int:
+    cfg = _cfg(strict=False)
+    browser_mode = "headless" if getattr(args, "headless", False) else (
+        "headed" if getattr(args, "headed", False) else None)
+    watch = bool(getattr(args, "watch", False))
+    slow_mo = getattr(args, "slow_mo", None)
+    result = _api(cfg, "POST", "/api/test-one", {
+        "job_id": args.job_id, "dry_run": args.dry_run, "browser_mode": browser_mode,
+        "watch": watch, "slow_mo_ms": slow_mo,
+    })
+    if "selection_status" not in result:
+        raise SystemExit(
+            "The running ApplyPilot backend is using an older test-one implementation. "
+            "No dry-run changes were made. Shut it down with `applypilot shutdown` (or press Ctrl+C twice "
+            "in its terminal), restart it with `applypilot run`, and retry."
+        )
+    print(f"Job:     {result['job_id']}")
+    print(f"Company: {result['company']}")
+    print(f"Title:   {result['title']}")
+    print(f"URL:     {result['source_url']}")
+    print(f"State:   {result.get('application_state') or 'not queued'}")
+    print(f"Browser: {result.get('browser_mode', browser_mode or 'headed')}"
+          f"{'  watch=' + str(bool(result.get('watch'))) if watch else ''}"
+          f"  slow-mo={result.get('slow_mo_ms', slow_mo or 0)}ms")
+    if result["selection_status"] == "new":
+        print("Selection: NEW — no application record exists for this job.")
+    else:
+        print(f"Selection: EXISTING — application {result['application_id']} already exists.")
+    if args.dry_run:
+        print("DRY RUN: no database state was changed and no external network request was made.")
+        return 0
+    app_id = result["application_id"]
+    browser = result.get("browser") or {}
+    tab = browser.get("tab") or {}
+    if tab:
+        print(f"Controlled tab: window={tab.get('window_id')} tab={tab.get('tab_id')} "
+              f"url={tab.get('url') or 'unknown'} focus_confirmed={((browser.get('focus') or {}).get('confirmed'))}")
+    print(f"Application: {app_id}\nRunning only this application; Ctrl+C here does not stop the backend.")
+    parked = {"INELIGIBLE", "SUBMITTED", "SUBMISSION_UNCONFIRMED", "FAILED", "SKIPPED",
+              "WAITING_FOR_CAPTCHA", "NEEDS_USER", "READY_TO_SUBMIT"}
+    try:
+        event_cursor = 0
+        last_watch_status: tuple[Any, ...] | None = None
+        while True:
+            detail = _api(cfg, "GET", f"/api/applications/{app_id}")
+            summary = detail["summary"]
+            state, blocked = summary["state"], summary.get("blocked_on")
+            if watch:
+                runtime = _api(cfg, "GET", "/api/status")
+                bridge_connected = bool((runtime.get("bridge") or {}).get("connected"))
+                worker: dict[str, Any] = next((w for w in runtime.get("workers") or []
+                                              if w.get("application_id") == app_id), {})
+                status_key = (state, summary.get("worker_id"), summary.get("window_id"), summary.get("tab_id"),
+                              summary.get("current_url"), blocked, bridge_connected, worker.get("activity"))
+                if status_key != last_watch_status:
+                    print("WATCH state={} worker={} bridge={} window={} tab={} url={} action={} waiting={}".format(
+                        state, summary.get("worker_id") or "idle", bridge_connected, summary.get("window_id"),
+                        summary.get("tab_id"), summary.get("current_url") or "—", worker.get("activity") or "idle",
+                        blocked or "no"), flush=True)
+                    last_watch_status = status_key
+                evs = _api(cfg, "GET", f"/api/applications/{app_id}/events?after_id={event_cursor}&limit=500")["events"]
+                if event_cursor == 0 and len(evs) > 25:
+                    evs = evs[-25:]
+                for event in evs:
+                    event_cursor = max(event_cursor, int(event["id"]))
+                    data = event.get("data") or {}
+                    context = []
+                    # Keep watch diagnostics structural: enough to follow reasoning
+                    # attempts and recovery, without printing model text or field values.
+                    for key in ("page_kind", "title", "tab_id", "window_id", "url", "action", "fields",
+                                "challenge_type", "items", "attempt", "max_attempts", "decision",
+                                "response_shape"):
+                        if data.get(key) not in (None, "", []):
+                            context.append(f"{key}={data[key]}")
+                    print(f"WATCH #{event['id']} [{event['component']}/{event['event_type']}] "
+                          f"{event['message']}" + (" | " + " ".join(context) if context else ""), flush=True)
+            if watch and (state in {"WAITING_FOR_CAPTCHA", "NEEDS_USER"} or blocked == "reasoning"):
+                time.sleep(1)
+                continue
+            if state in parked or blocked:
+                _api(cfg, "POST", "/api/control", {"action": "stop"})
+                reason = summary.get("state_reason") or (f"waiting on {blocked}" if blocked else "pipeline stopped")
+                print(f"Result: {state} — {reason}")
+                if state in {"WAITING_FOR_CAPTCHA", "NEEDS_USER", "READY_TO_SUBMIT"} or blocked:
+                    print("User action is required. The durable single-job scope remains active.")
+                return 0 if state not in {"FAILED", "SUBMISSION_UNCONFIRMED"} else 1
+            time.sleep(1)
+    except KeyboardInterrupt:
+        _api(cfg, "POST", "/api/control", {"action": "stop"})
+        print("\nSingle-job run stopped; its durable scope remains active.")
+        return 130
+
+
+def cmd_shutdown(args: argparse.Namespace) -> int:
+    cfg = _cfg(strict=False)
+    print(json.dumps(_api(cfg, "POST", "/api/backend/shutdown"), indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="applypilot", description=__doc__)
     parser.add_argument("--version", action="version", version=__version__)
@@ -313,6 +459,17 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("backup", help="consistent online backup of the database")
     p.add_argument("--dest")
     p.set_defaults(func=cmd_backup)
+    p = sub.add_parser("test-one", help="run exactly one already-imported job without synchronization")
+    p.add_argument("--job-id")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--no-sync", action="store_true", help="accepted for clarity; test-one is always offline")
+    modes = p.add_mutually_exclusive_group()
+    modes.add_argument("--headed", action="store_true", help="use and focus the connected visible Firefox session (default)")
+    modes.add_argument("--headless", action="store_true", help="request headless mode (unsupported by extension backend)")
+    p.add_argument("--watch", action="store_true", help="stream application states and audit events")
+    p.add_argument("--slow-mo", type=int, metavar="MS", help="delay actual browser actions by 0-10000 milliseconds")
+    p.set_defaults(func=cmd_test_one)
+    sub.add_parser("shutdown", help="gracefully stop the backend process").set_defaults(func=cmd_shutdown)
     args = parser.parse_args(argv)
     os.environ.setdefault("PYTHONUTF8", "1")
     return int(args.func(args) or 0)

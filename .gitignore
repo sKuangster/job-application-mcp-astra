@@ -6,9 +6,16 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+# Secrets and machine-local credentials.  Keep only the documented example tracked.
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials/
+secrets/
 data/
 .demo/
 node_modules/
@@ -17,13 +24,15 @@ web-ext-artifacts/
 *.egg-info/
 *.sqlite*
 *.log
+# Candidate-owned content.  Public examples, templates, and placeholders remain tracked.
+/config/candidate.yaml
+/config/*.local.yaml
+/config/*.local.yml
+/profile/*.local.md
+/templates/*.local.md
 resumes/*
 !resumes/.gitkeep
 !resumes/README.md
-config/candidate.local.yaml
-config/preferences.local.yaml
-profile/profile.local.md
-templates/*.local.md
 artifacts/
 
 # ApplyPilot

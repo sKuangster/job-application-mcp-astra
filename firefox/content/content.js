@@ -5,7 +5,7 @@
  *   {__applypilot: 1, action, payload}
  * Reply (Promise): {ok: true, result} | {ok: false, error: {code, message, details?}}
  *
- * Actions: ping, scan, fill, upload, click, click_text, click_point, extract_text, wait_quiet.
+ * Actions: ping, scan, fill, upload, click, click_text, click_point, highlight, extract_text, wait_quiet.
  * Ids in payloads/results are LOCAL to this frame (the background adds "<frameId>:").
  */
 (function () {
@@ -35,6 +35,8 @@
         return engine.clickText(p.text, !!p.exact);
       case "click_point":
         return engine.clickPoint(p.x, p.y);
+      case "highlight":
+        return Promise.resolve(engine.highlight(String(p.element_id)));
       case "extract_text":
         return Promise.resolve(engine.extractText(p.max_chars || 4000));
       case "wait_quiet":

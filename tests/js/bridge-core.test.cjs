@@ -28,7 +28,7 @@ function makeDriver() {
     async navigate(tabId, url) { this.calls.push(["navigate", tabId, url]); this.tabs.get(tabId).url = url; },
     async waitForLoad(tabId) { if (!this.tabs.has(tabId)) throw Object.assign(new Error("x"), { code: "TAB_CLOSED" }); return { complete: true }; },
     async getTab(tabId) { const t = this.tabs.get(tabId); return t ? Object.assign({}, t) : null; },
-    async focus(tabId) { this.calls.push(["focus", tabId]); },
+    async focus(tabId) { this.calls.push(["focus", tabId]); return { confirmed: true, tab_active: true, window_focused: true }; },
     async close(tabId) { this.calls.push(["close", tabId]); this.tabs.delete(tabId); this.removed.forEach(cb => cb(tabId)); },
     async screenshot(tabId) { this.calls.push(["screenshot", tabId]); return { data_url: "data:image/png;base64,AA==" }; },
     async getFrames(tabId) {
@@ -283,7 +283,10 @@ test("screenshot, focus, wait_ready, tab_info, navigate", async () => {
   core.onEvent(e => events.push(e));
   await core.handleMessage(cmd("A", "open", { url: "https://x/", active: false }));
   assert.equal((await core.handleMessage(cmd("A", "screenshot", { format: "png" }))).result.data_url, "data:image/png;base64,AA==");
-  assert.deepEqual((await core.handleMessage(cmd("A", "focus"))).result, { ok: true });
+  assert.deepEqual((await core.handleMessage(cmd("A", "focus"))).result, {
+    ok: true, tab_id: 1, window_id: 10, url: "https://x/", title: "T1",
+    confirmed: true, tab_active: true, window_focused: true
+  });
   const w = await core.handleMessage(cmd("A", "wait_ready", { timeout_ms: 2000, quiet_ms: 100 }));
   assert.deepEqual(w.result, { url: "https://x/", title: "T1", ready: true });
   const n = await core.handleMessage(cmd("A", "navigate", { url: "https://x/2" }));
@@ -291,5 +294,23 @@ test("screenshot, focus, wait_ready, tab_info, navigate", async () => {
   const ti = await core.handleMessage(cmd("A", "tab_info"));
   assert.equal(ti.result.url, "https://x/2");
   core.handleTabNavigated(1, "https://x/3");
-  assert.deepEqual(events.pop(), { type: "event", event: "tab_navigated", app_id: "A", data: { url: "https://x/3" } });
+  assert.deepEqual(events.pop(), { type: "event", event: "tab_navigated", app_id: "A",
+    data: { url: "https://x/3", tab_id: 1, window_id: 10 } });
+});
+
+test("host permission errors are preserved and actionable", async () => {
+  const drv = makeDriver();
+  const core = new BridgeCore({ driver: drv, storage: memStorage() });
+  const o = await core.handleMessage(cmd("A", "open", { url: "https://permission.example/" }));
+  drv.sendToFrame = async () => {
+    const e = new Error("grant site access or reinstall the extension");
+    e.code = "HOST_PERMISSION_REQUIRED";
+    e.details = { origin: "https://permission.example/*" };
+    throw e;
+  };
+  const r = await core.handleMessage(cmd("A", "scan"));
+  assert.equal(r.ok, false);
+  assert.equal(r.error.code, "HOST_PERMISSION_REQUIRED");
+  assert.match(r.error.message, /grant site access|reinstall/i);
+  assert.equal(o.ok, true);
 });

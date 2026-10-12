@@ -260,8 +260,8 @@ def test_one_failure_does_not_stop_other_workers(system):
         detail["summary"]["state"] == "SKIPPED"
 
 
-def test_restart_resumes_persisted_work(project, monkeypatch):
-    """Kill the backend while applications wait on Astra; a new backend + browser finishes them."""
+def test_restart_holds_persisted_work_until_explicit_resume(project, monkeypatch):
+    """A restart stays stopped; an explicit resume finishes the persisted applications."""
     monkeypatch.setenv("APPLYPILOT_ALLOW_NO_ORIGIN", "1")
     cfg = load_config(project)
     with FixtureServer() as fx:
@@ -293,7 +293,8 @@ def test_restart_resumes_persisted_work(project, monkeypatch):
                         time.sleep(0.3)
                     assert client.get("/api/status")["pending_reasoning"] >= 1
                 else:
-                    assert client.get("/api/status")["control"] == "RUNNING"  # persisted
+                    assert client.get("/api/status")["control"] == "STOPPED"
+                    client.post("/api/control", {"action": "resume"})
                     states = run_until_settled({"client": client, "cfg": cfg}, ids, SimulatedAstra(), timeout=180)
                     assert set(states.values()) == {"SUBMITTED"}
                     for name in ids:

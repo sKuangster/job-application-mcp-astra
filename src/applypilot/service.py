@@ -50,6 +50,7 @@ class Service:
                   for e in self.db.recent_events(level="ERROR", limit=10)]
         return {
             "control": self.e.control(), "mode": self.e.mode(),
+            "execution_scope": self.db.execution_scope(),
             "backlog_complete": bool(self.db.meta_get("backlog_complete", False)),
             "workers": self.e.workers(),
             "limits": {"browser_workers": self.cfg.settings.automation.max_concurrent_applications,
@@ -101,7 +102,20 @@ class Service:
     async def sync(self, mode: str = "backlog") -> dict[str, Any]:
         return await self.e.sync(mode)
 
+    async def test_one(self, job_id: str | None = None, *, dry_run: bool = False,
+                       browser_mode: str | None = None, watch: bool = False,
+                       slow_mo_ms: int | None = None) -> dict[str, Any]:
+        return await self.e.start_test_one(job_id, dry_run=dry_run, browser_mode=browser_mode,
+                                           watch=watch, slow_mo_ms=slow_mo_ms)
+
     async def start_autopilot(self, mode: str = "backlog", refresh: bool = True) -> dict[str, Any]:
+        scope = self.db.execution_scope()
+        if scope and scope.get("kind") == "test_one" and mode != "test_one":
+            if self.e.control() != "STOPPED":
+                raise ValueError("test-one is active; stop it before starting a normal automation mode")
+            # `start` is an explicit request to leave test mode. Clear the durable
+            # scope while still stopped, before optional synchronization.
+            self.db.meta_delete("execution_scope")
         sync = await self.e.sync(mode if mode != "continuous" else "backlog") if refresh else None
         await self.e.set_control("start", mode)
         return {"sync": sync, "status": self.compact_status()}
@@ -126,6 +140,8 @@ class Service:
             "simplify_url": row.get("simplify_url") or (job or {}).get("simplify_url"),
             "application_url": redact_url(row.get("apply_url") or (job or {}).get("apply_url") or row.get("direct_url")),
             "current_url": row.get("current_url"), "created_at": row["created_at"], "updated_at": row["updated_at"],
+            "blocked_on": row.get("blocked_on"),
+            "tab_id": row.get("tab_id"), "window_id": row.get("window_id"),
             "submitted_at": row.get("submitted_at"), "attempts": row.get("attempts"), "worker_id": row.get("worker_id"),
             "needs_user": data.get("needs_user") if row["state"] in (
                 S.WAITING_FOR_CAPTCHA, S.NEEDS_USER, S.READY_TO_SUBMIT, S.SUBMISSION_UNCONFIRMED) else None,
