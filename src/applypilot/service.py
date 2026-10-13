@@ -61,6 +61,9 @@ class Service:
             "today": self.db.today_counts(self.e.today_start()),
             "needs_user": needs, "pending_reasoning": self.db.pending_reasoning_count(),
             "bridge": self.e.bridge.status(),
+            "reasoning_provider": self.cfg.settings.reasoning.provider,
+            "provider_health": {name: self.db.meta_get(f"provider_health:{name}", {})
+                                for name in ("ollama", "gemini", "openai")},
             "config": {"ready": readiness["ready"], "missing": readiness["missing"], "warnings": readiness["warnings"][:10],
                        "auto_submit": readiness["auto_submit"]},
             "jobs": self.db.job_counts(), "last_sync_at": self.db.meta_get("last_sync_at"),
@@ -87,6 +90,8 @@ class Service:
         if not s["bridge"]["connected"]:
             return "Firefox extension not connected; ask the user to open Firefox with the ApplyPilot extension."
         if s["pending_reasoning"]:
+            if s.get("reasoning_provider") in {"hybrid", "openai"}:
+                return "Backend reasoning workers consume the queue autonomously; check provider health and attention items."
             return "Call get_reasoning_batch and answer the items with submit_reasoning."
         if s["control"] != "RUNNING":
             return "Autopilot is not running; call start_autopilot."
@@ -198,7 +203,8 @@ class Service:
             "pages": data.get("pages") or [],
             "submission": self.db.submission(app_id),
             "gate": data.get("gate"),
-            "metrics": data.get("metrics") or {},
+            "metrics": {**(data.get("metrics") or {}), "estimated_usd": sum(
+                r["estimated_usd"] for r in self.db.cost_totals()["by_application"] if r["application_id"] == app_id)},
             "reasoning": [{"id": r["id"], "kind": r["kind"], "status": r["status"], "question": r["payload"].get("question"),
                            "result": r["result"]} for r in self.db.reasoning_for_application(app_id)],
         }

@@ -323,7 +323,8 @@ class ReasoningService:
         for item in self.db.reasoning_items(ids=item_ids):
             if item["status"] not in ("PENDING", "LEASED"):
                 continue
-            message = f"{provider} response validation failed after bounded repairs: {truncate(reason, 350)}"
+            message = (f"Hybrid reasoning exhausted available tiers: {truncate(reason, 350)}" if provider == "hybrid"
+                       else f"{provider} response validation failed after bounded repairs: {truncate(reason, 350)}")
             waiters = self.db.complete_reasoning(item["id"], {"needs_user": message}, status="FAILED")
             for waiter in waiters:
                 affected[waiter["application_id"]] = {"item_id": item["id"], "reason": message}
@@ -383,13 +384,6 @@ class ReasoningService:
                 return True, {"needs_user": truncate(str(action.get("reason") or res.get("reason") or
                                                            "manual page action required"), 500)}, ""
             return True, {"action": action, "reason": truncate(str(res.get("reason") or ""), 500)}, ""
-        if p.get("qclass") in {"FACTUAL", "EEO", "CONSENT", "PREFERENCE"}:
-            # Ambiguous option labels must never grant a model authority to invent
-            # facts, identity attributes or user preferences. Exact mappings can be
-            # accepted deterministically; ambiguous semantics require human input.
-            known = (p.get("hints") or {}).get("known_value") or []
-            if not known or not any(str(res.get("value")).casefold() == str(v).casefold() for v in known):
-                return False, {}, "source-of-truth answer requires an exact known value or human input"
         if "value" not in res:
             return False, {}, "missing value"
         value = res["value"]

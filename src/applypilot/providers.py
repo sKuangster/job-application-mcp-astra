@@ -80,6 +80,10 @@ class OpenAIProvider:
                     item_ids = [str(i["item_id"]) for i in batch["items"]]
                     self.reasoning.fail_provider_items(item_ids, str(exc), provider="openai")
                 backoff = 5.0
+            except ValueError:
+                if batch:
+                    self.reasoning.fail_provider_items([str(i["item_id"]) for i in batch["items"]],
+                                                      "configured budget or request limit exhausted", provider="openai")
             except Exception as exc:
                 log.warning("openai provider error: %s", type(exc).__name__)
                 if batch:
@@ -94,6 +98,14 @@ class OpenAIProvider:
                 backoff = min(300.0, backoff * 2)
 
     async def complete(self, batch: dict[str, Any]) -> list[dict[str, Any]]:
+        manual = [item for item in batch["items"] if item["kind"] == "question" and
+                  item.get("qclass", "UNKNOWN") not in {"WRITTEN", "JOB_SPECIFIC"}]
+        if manual:
+            answers = [{"item_id": item["item_id"], "needs_user":
+                        "Unresolved fact, EEO, consent, preference or unclassified question requires human input."}
+                       for item in manual]
+            remaining = [item for item in batch["items"] if item not in manual]
+            return answers + (await self.complete({**batch, "items": remaining}) if remaining else [])
         prompt = json.dumps({k: batch[k] for k in ("candidate", "templates", "applications", "items")}, default=str)
         messages = [
             {"role": "system", "content": batch["instructions"] +
@@ -134,7 +146,7 @@ class OpenAIProvider:
             shape = _response_outline(results)
             for app_id in batch["applications"]:
                 self.db.event(app_id, "reasoning", "provider_validation_failed",
-                              f"OpenAI response failed validation (attempt {attempt}/{MAX_OUTPUT_REPAIRS + 1})",
+                              f"{self.name} response failed validation (attempt {attempt}/{MAX_OUTPUT_REPAIRS + 1})",
                               {"attempt": attempt, "max_attempts": MAX_OUTPUT_REPAIRS + 1,
                                "errors": last_errors[:10], "response_shape": shape,
                                "decision": "repair" if attempt <= MAX_OUTPUT_REPAIRS else "needs_user"},
@@ -195,9 +207,12 @@ class OpenAIProvider:
             raise
         finally:
             request_chars = len(json.dumps(messages, default=str))
-            estimated = usage.get("prompt_tokens") is None or usage.get("completion_tokens") is None
-            input_tokens = usage.get("prompt_tokens") if usage.get("prompt_tokens") is not None else input_bound
-            output_tokens = usage.get("completion_tokens") if usage.get("completion_tokens") is not None else self.settings.max_output_tokens
+            input_usage, output_usage = usage.get("prompt_tokens"), usage.get("completion_tokens")
+            valid_input = type(input_usage) is int and input_usage >= 0
+            valid_output = type(output_usage) is int and output_usage >= 0
+            estimated = not (valid_input and valid_output)
+            input_tokens = input_usage if valid_input else input_bound
+            output_tokens = output_usage if valid_output else self.settings.max_output_tokens
             cost = (input_tokens * self.settings.input_usd_per_million + output_tokens * self.settings.output_usd_per_million) / 1_000_000
             self.db.record_model_call(provider=self.name, kind="completion_structured" if structured else "completion_json",
                                       items=item_count, application_ids=app_ids, request_chars=request_chars,

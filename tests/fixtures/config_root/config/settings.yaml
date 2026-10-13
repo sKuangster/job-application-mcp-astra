@@ -19,4 +19,5 @@ ingestion:
 research:
   enabled: false
 reasoning:
+  provider: mcp                      # fixture tests use SimulatedAstra; never live model APIs
   batch_collect_seconds: 0.2

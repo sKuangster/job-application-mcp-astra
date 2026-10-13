@@ -129,6 +129,15 @@ class Database:
             if not self._uri:
                 conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
+            if not self._uri and conn.execute("SELECT 1 FROM sqlite_master WHERE name='schema_migrations'").fetchone():
+                current = int(conn.execute("SELECT COALESCE(MAX(version),0) FROM schema_migrations").fetchone()[0])
+                latest = max((int(p.name[:3]) for p in MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.sql")), default=0)
+                if 0 < current < latest:
+                    folder = Path(self.path).resolve().parent / "backups"
+                    folder.mkdir(exist_ok=True)
+                    snapshot = folder / f"schema-v{current}-{uuid.uuid4().hex[:12]}.sqlite3"
+                    with closing(sqlite3.connect(snapshot)) as backup:
+                        conn.backup(backup)
 
         def migrate(conn: sqlite3.Connection) -> None:
             conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at REAL NOT NULL)")

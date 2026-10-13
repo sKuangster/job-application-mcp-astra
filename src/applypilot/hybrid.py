@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from collections.abc import Callable
 from typing import Any
 
@@ -100,7 +101,9 @@ class HybridRouter:
             if item["kind"] == "question":
                 threshold = (self.settings.written_confidence if item.get("qclass") in {"WRITTEN", "JOB_SPECIFIC"}
                              else self.settings.question_confidence)
-                if float(result.get("confidence", 0)) < max(threshold, self.cfg.settings.reasoning.min_confidence):
+                confidence = float(result.get("confidence", 0))
+                if not math.isfinite(confidence) or not 0 <= confidence <= 1 or confidence < max(
+                        threshold, self.cfg.settings.reasoning.min_confidence):
                     raise ProviderOutputError("low confidence")
             elif name == "ollama" and self.settings.review_local_page_and_eligibility and self.providers["gemini"].available():
                 self._retry(item_id, 1, 0, 0, f"{item['kind']}:cloud_review_required")
