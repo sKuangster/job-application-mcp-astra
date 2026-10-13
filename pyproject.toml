@@ -30,6 +30,7 @@ dev = [
   "types-beautifulsoup4",
 ]
 keyring = ["keyring>=25"]
+windows-native = ["pywinauto>=0.6.9; sys_platform == 'win32'", "psutil>=6; sys_platform == 'win32'"]
 
 [project.scripts]
 applypilot = "applypilot.cli:main"

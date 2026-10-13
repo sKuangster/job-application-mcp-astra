@@ -268,6 +268,19 @@ class ApplicationRunner:
                     self.event("browser", "focus_confirmed", "Focused newly opened application tab", focus or {})
             return result
         except (BrowserError, BridgeUnavailable) as exc:
+            if action == "focus" and self.cfg.settings.browser.windows_native.enabled:
+                from applypilot.windows_native import WindowsAttentionFallback
+
+                ownership = self.e.bridge.owned.get(self.app["id"], {})
+                try:
+                    fallback = WindowsAttentionFallback(self.cfg.settings.browser.windows_native)
+                    native_result = await fallback.focus(ownership)
+                    self.event("browser", "native_attention_focus", "Focused owned Firefox window through UI Automation",
+                               native_result)
+                    return native_result
+                except Exception as native_exc:
+                    self.event("browser", "native_focus_failed", "UI Automation focus was unavailable",
+                               {"error": type(native_exc).__name__}, level="WARNING")
             err = f"{getattr(exc, 'code', 'BRIDGE')}: {exc}"
             raise
         finally:
@@ -318,7 +331,7 @@ class ApplicationRunner:
         if not self.e.bridge.connected or self.app["id"] not in self.e.bridge.owned:
             return
         try:
-            focus = await self.e.bridge.call(self.app["id"], "focus", {}, timeout=10)
+            focus = await self.cmd("focus", {}, timeout=10, audit=False)
             tab = await self.e.bridge.call(self.app["id"], "tab_info", {}, timeout=10)
             self.event("browser", "attention_focused", f"Focused application tab for {kind}",
                        {"kind": kind, **(tab or {}), "focus": focus})

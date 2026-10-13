@@ -140,6 +140,18 @@ class AutomationSettings(_Strict):
     stop_on_config_incomplete: bool = True
 
 
+class NativeWindowBinding(_Strict):
+    handle: int = Field(ge=1)
+    title: str = Field(min_length=1)
+
+
+class WindowsNativeSettings(_Strict):
+    enabled: bool = False
+    # Explicit extension window_id -> Windows HWND + exact expected caption.
+    # Bindings expire with the browser window; no desktop-wide target searching.
+    bindings: dict[str, NativeWindowBinding] = Field(default_factory=dict)
+
+
 class BrowserSettings(_Strict):
     tab_strategy: Literal["window", "tab"] = "window"
     page_load_timeout: float = Field(45, ge=2, le=300)
@@ -152,6 +164,7 @@ class BrowserSettings(_Strict):
     focus_new_windows: bool = False
     test_one_mode: Literal["headed", "headless"] = "headed"
     debug_action_delay_ms: int = Field(0, ge=0, le=10000)
+    windows_native: WindowsNativeSettings = WindowsNativeSettings()
 
 
 class OpenAISettings(_Strict):
@@ -161,16 +174,16 @@ class OpenAISettings(_Strict):
     api_key_env: str = "OPENAI_API_KEY"
     max_output_tokens: int = Field(4000, ge=256, le=64000)
     timeout: float = Field(120, ge=5, le=600)
-    input_usd_per_million: float = Field(0.25, ge=0)
-    output_usd_per_million: float = Field(2.0, ge=0)
+    input_usd_per_million: float = Field(0.25, ge=0, allow_inf_nan=False)
+    output_usd_per_million: float = Field(2.0, ge=0, allow_inf_nan=False)
 
 
 class OllamaSettings(OpenAISettings):
     model: str = "qwen2.5:7b"
     base_url: str = "http://127.0.0.1:11434"
     api_key_env: str = "OLLAMA_API_KEY"
-    input_usd_per_million: float = 0
-    output_usd_per_million: float = 0
+    input_usd_per_million: float = Field(0, ge=0, allow_inf_nan=False)
+    output_usd_per_million: float = Field(0, ge=0, allow_inf_nan=False)
 
 
 class GeminiSettings(OpenAISettings):
@@ -178,14 +191,14 @@ class GeminiSettings(OpenAISettings):
     model: str = "gemini-2.5-flash"
     base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     api_key_env: str = "GEMINI_API_KEY"
-    input_usd_per_million: float = 0.30
-    output_usd_per_million: float = 2.50
+    input_usd_per_million: float = Field(0.30, ge=0, allow_inf_nan=False)
+    output_usd_per_million: float = Field(2.50, ge=0, allow_inf_nan=False)
 
 
 class HybridSettings(_Strict):
     premium_enabled: bool = False
-    daily_budget_usd: float = Field(1.0, ge=0)
-    application_budget_usd: float = Field(0.10, ge=0)
+    daily_budget_usd: float = Field(1.0, ge=0, allow_inf_nan=False)
+    application_budget_usd: float = Field(0.10, ge=0, allow_inf_nan=False)
     premium_calls_per_application: int = Field(3, ge=0, le=100)
     retries_per_tier: int = Field(2, ge=1, le=10)
     retry_seconds: float = Field(10, ge=0, le=3600)
