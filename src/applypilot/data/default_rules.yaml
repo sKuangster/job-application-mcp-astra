@@ -1,0 +1,57 @@
+# Built-in STRUCTURAL eligibility rules (merged with preferences.yaml eligibility_rules;
+# a user rule with the same id replaces the default; disable all with
+# settings.yaml eligibility.use_default_rules: false, or one with `enabled: false`).
+#
+# Philosophy: only hard incompatibilities skip a job. Missing skills, "preferred"
+# qualifications, years of experience, frameworks and languages NEVER appear here.
+# A rule "applies" when ALL of its triggers match (patterns AND/OR metadata); it then
+# compares one candidate fact. Unknown candidate facts never cause a skip by default.
+
+- id: listing_us_citizenship_required
+  metadata_key: sponsorship
+  metadata_values: ["U.S. Citizenship is Required"]
+  candidate_path: candidate.work_authorization.US.citizen
+  operator: equals
+  expected: true
+  country: US
+  explanation: Simplify lists this role as requiring U.S. citizenship.
+
+- id: listing_no_sponsorship
+  metadata_key: sponsorship
+  metadata_values: ["Does Not Offer Sponsorship"]
+  candidate_path: derived.requires_us_sponsorship
+  operator: equals
+  expected: false
+  country: US
+  explanation: Simplify lists this role as not offering visa sponsorship.
+
+- id: listing_graduate_degree_only
+  # Simplify degree tags alone are noisy, so the job text must ALSO name graduate study.
+  metadata_key: degrees
+  patterns:
+    - '(?i)\b(master''?s|m\.?s\.?|ph\.?\s?d|doctoral|graduate)\s+(students?|candidates?|degree|program)'
+    - '(?i)\b(pursuing|enrolled in)\s+(a\s+)?(master|ph\.?\s?d|doctoral|graduate)'
+  candidate_path: candidate.education.degree_level
+  operator: candidate_in_metadata
+  explanation: The listing's degree requirement excludes the candidate's degree level and the posting text targets graduate students.
+
+- id: graduation_window
+  mode: review
+  patterns:
+    - '(?i)graduat\w*[^.\n]{0,80}\b(?:19|20)\d\d\b'
+    - '(?i)\bclass of (?:19|20)\d\d\b'
+    - '(?i)\b(?:expected|anticipated) (?:graduation|completion)[^.\n]{0,60}\b(?:19|20)\d\d\b'
+  candidate_path: candidate.education.graduation_date
+  operator: truthy
+  check: graduation_window   # explicit windows are decided deterministically; vague ones go to Astra
+  explanation: The posting states a graduation window; it is compared with the candidate's graduation date.
+
+- id: high_school_only
+  patterns:
+    - '(?i)\b(intended|open|available|designed|exclusively|only) (only )?for (current )?high school students\b'
+    - '(?i)\bare you a high school student\b'
+    - '(?i)\bhigh school (students|juniors|seniors) only\b'
+  candidate_path: candidate.education.degree_level
+  operator: equals
+  expected: high_school
+  explanation: The program is only for high school students.

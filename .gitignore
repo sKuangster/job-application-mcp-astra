@@ -16,7 +16,7 @@ htmlcov/
 *.pfx
 credentials/
 secrets/
-data/
+/data/
 .demo/
 node_modules/
 dist/
@@ -35,11 +35,11 @@ web-ext-artifacts/
 resumes/*
 !resumes/.gitkeep
 !resumes/README.md
-artifacts/
+/artifacts/
 
 # ApplyPilot
 config/*.local.yaml
-data/
+/data/
 dist/
 firefox/web-ext-artifacts/
 tests/js/node_modules/

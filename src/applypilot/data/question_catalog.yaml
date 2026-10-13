@@ -1,0 +1,447 @@
+# Deterministic question catalog: maps application questions to the source of truth.
+#
+# Entries are checked IN ORDER; the first match wins, so specific patterns come before
+# general ones. Matching fields (all optional, any one suffices unless noted):
+#   label:         regexes searched in the lower-cased question label (plus placeholder if label is empty)
+#   name:          regexes searched in the input's name/id attribute (weaker; used only if no label match)
+#   autocomplete:  exact HTML autocomplete tokens
+#   types:         restrict to these field types
+#   exclude:       regexes that veto a label match
+# Value specs:
+#   fact: candidate.path                 authoritative candidate fact
+#   facts: [path, path]                  first non-empty
+#   pref: preferences.path               user preference
+#   eeo: key                             preferences.eeo.<key> (never inferred)
+#   derived: name                        computed by questions/derived.py from facts
+#   compose: "{candidate.a} {candidate.b}"  string built from facts (all must exist)
+#   written: template_name               personalized prose via templates + Astra
+#   file: resume | cover_letter
+#   ask: true                            always semantic (Astra) but with a known class
+# qclass: FACTUAL | PREFERENCE | EEO | WRITTEN | JOB_SPECIFIC | CONSENT | FILE | UNKNOWN
+
+# ---------------------------------------------------------------- files
+- id: resume_file
+  qclass: FILE
+  types: [file]
+  label: ['resume', '\bcv\b', 'curriculum vitae']
+  name: ['resume', '\bcv\b']
+  file: resume
+- id: cover_letter_file
+  qclass: FILE
+  types: [file]
+  label: ['cover letter', 'motivation letter']
+  name: ['cover']
+  file: cover_letter
+- id: transcript_file
+  qclass: FILE
+  types: [file]
+  label: ['transcript']
+  file: transcript
+
+# ---------------------------------------------------------------- identity
+- id: email_confirm
+  qclass: FACTUAL
+  label: ['(confirm|re-?enter|verify|repeat).{0,20}e-?mail']
+  fact: candidate.identity.email
+- id: email
+  qclass: FACTUAL
+  label: ['e-?mail']
+  exclude: ['referr', 'manager', 'reference', 'opt.?in', 'subscribe', 'marketing', 'newsletter']
+  autocomplete: [email]
+  name: ['e-?mail']
+  types: [text, email]
+  fact: candidate.identity.email
+- id: first_name
+  qclass: FACTUAL
+  label: ['^(legal )?first( name)?$', '^given name', '^first name', 'legal first name', '^name \(first\)']
+  exclude: ['preferred', 'referr', 'emergency', 'reference']
+  autocomplete: [given-name]
+  name: ['first.?name', '\bfname\b', 'given.?name', 'firstname']
+  fact: candidate.identity.first_name
+- id: last_name
+  qclass: FACTUAL
+  label: ['^(legal )?last( name)?$', '^(family|sur) ?name', '^last name', 'legal last name', '^name \(last\)']
+  exclude: ['preferred', 'referr', 'emergency', 'reference']
+  autocomplete: [family-name]
+  name: ['last.?name', '\blname\b', 'family.?name', 'surname', 'lastname']
+  fact: candidate.identity.last_name
+- id: middle_name
+  qclass: FACTUAL
+  label: ['middle (name|initial)']
+  autocomplete: [additional-name]
+  name: ['middle.?name']
+  fact: candidate.identity.middle_name
+- id: preferred_name
+  qclass: FACTUAL
+  label: ['preferred (first )?name', 'nick ?name', 'name you go by', 'preferred name']
+  facts: [candidate.identity.preferred_name, candidate.identity.first_name]
+- id: full_name
+  qclass: FACTUAL
+  label: ['^(full |legal |your )?name$', '^full (legal )?name', '^name \(as it appears', '^candidate name', 'signature', 'type your (full )?name', 'electronic signature']
+  exclude: ['referr', 'company', 'school', 'university', 'manager', 'emergency', 'reference', 'user ?name', '\bdate\b']
+  autocomplete: [name]
+  name: ['^name$', 'full.?name', '^_?name$']
+  compose: '{candidate.identity.first_name} {candidate.identity.last_name}'
+- id: phone_country_code
+  qclass: FACTUAL
+  label: ['(phone )?country (phone )?code', 'dialing code', 'phone code']
+  derived: phone_country_code
+- id: phone_device_type
+  qclass: PREFERENCE
+  label: ['phone (device )?type', 'type of phone', 'device type']
+  pref: preferences.application.phone_device_type
+- id: phone_extension
+  qclass: FACTUAL
+  label: ['phone extension', '^extension$']
+  fact: candidate.identity.phone_extension
+- id: phone
+  qclass: FACTUAL
+  label: ['phone', '\bmobile\b', '\bcell\b', 'telephone', 'contact number']
+  exclude: ['text message', 'sms', 'reference', 'emergency', 'type', 'develop', '\bapps?\b', 'experience', 'device']
+  autocomplete: [tel, tel-national]
+  name: ['phone', 'mobile', '\btel\b']
+  derived: phone
+- id: pronouns
+  qclass: EEO
+  label: ['pronoun']
+  eeo: pronouns
+
+# ---------------------------------------------------------------- address / location
+- id: address_line2
+  qclass: FACTUAL
+  label: ['address line 2', 'address 2', '^(apt|apartment|suite|unit)\b', 'apt\.?\s*/\s*suite', 'apartment.{0,10}(number|#|no)']
+  autocomplete: [address-line2]
+  name: ['address.?line.?2', 'address2']
+  fact: candidate.address.street2
+- id: address_line1
+  qclass: FACTUAL
+  label: ['^(street )?address( line 1)?$', 'address line 1', '^street', 'mailing address', 'home address']
+  autocomplete: [address-line1, street-address]
+  name: ['address.?line.?1', 'address1', 'street']
+  fact: candidate.address.street
+- id: city
+  qclass: FACTUAL
+  label: ['^city$', '^city ', '\btown\b', '^city/']
+  exclude: ['state', 'country']
+  autocomplete: [address-level2]
+  name: ['\bcity\b']
+  fact: candidate.address.city
+- id: postal_code
+  qclass: FACTUAL
+  label: ['zip', 'postal', 'post code', 'postcode']
+  autocomplete: [postal-code]
+  name: ['zip', 'postal']
+  fact: candidate.address.postal_code
+- id: region
+  qclass: FACTUAL
+  label: ['^(state|province|region)( of residence| ?/ ?province| or province| ?/ ?region)?$', '^state/province', '^state \(', '^province \(']
+  exclude: ['united states', 'statement', 'country', 'city']
+  autocomplete: [address-level1]
+  name: ['\bstate\b', 'province', 'region']
+  derived: region
+- id: location
+  qclass: FACTUAL
+  label: ['^(current )?location', 'city,? state', 'where (are you|do you) (currently )?(located|based|live|reside)', 'current (city|residence)', 'location \(city\)']
+  exclude: ['prefer', 'interested', 'which (office|location)', 'willing', 'relocat', 'work location']
+  derived: location
+- id: country
+  qclass: FACTUAL
+  label: ['^country', 'country of residence', 'country/region', 'country / region']
+  exclude: ['code', 'citizen', 'authori', 'work in']
+  autocomplete: [country, country-name]
+  name: ['\bcountry\b']
+  derived: country
+
+# ---------------------------------------------------------------- links
+- id: linkedin
+  qclass: FACTUAL
+  label: ['linked ?in']
+  name: ['linkedin']
+  fact: candidate.links.linkedin
+- id: github
+  qclass: FACTUAL
+  label: ['git ?hub']
+  name: ['github']
+  fact: candidate.links.github
+- id: portfolio
+  qclass: FACTUAL
+  label: ['portfolio', 'personal (web)?site', '^website', 'personal url', 'website url', 'other website', 'blog']
+  name: ['portfolio', 'website']
+  facts: [candidate.links.portfolio, candidate.links.website, candidate.links.github]
+- id: twitter
+  qclass: FACTUAL
+  label: ['twitter', '\bx\.com\b', '^x profile']
+  fact: candidate.links.twitter
+
+# ---------------------------------------------------------------- education
+- id: gpa
+  qclass: FACTUAL
+  label: ['\bgpa\b', 'grade point', 'cumulative average']
+  exclude: ['scale', 'major gpa']
+  derived: gpa
+- id: gpa_scale
+  qclass: FACTUAL
+  label: ['^gpa scale', 'gpa.{0,10}scale', 'out of 4', 'out of 5', 'out of 10']
+  fact: candidate.education.gpa_scale
+- id: graduation_year
+  qclass: FACTUAL
+  label: ['graduation year', 'year of graduation', 'class year', 'grad(uation)? year', 'expected year of graduation', 'what year (will|do) you graduate']
+  derived: graduation_year
+- id: graduation_month
+  qclass: FACTUAL
+  label: ['graduation month', 'month of graduation']
+  derived: graduation_month
+- id: graduation_date
+  qclass: FACTUAL
+  label: ['graduation date', 'expected graduation', 'anticipated graduation', 'grad date', 'when (will|do) you graduate', 'degree completion date', 'end date.*(education|school|degree)', 'expected completion']
+  derived: graduation_date
+- id: education_start
+  qclass: FACTUAL
+  label: ['start date.*(education|school|degree|university)', '(education|school) start']
+  derived: education_start_date
+- id: degree_level
+  qclass: FACTUAL
+  label: ['(highest|current) (level of )?(education|degree)', 'level of (education|study)', 'degree (type|level)', 'education level', 'what (degree|level) are you (currently )?pursuing', 'type of degree']
+  derived: degree_level
+- id: currently_enrolled
+  qclass: FACTUAL
+  label: ['currently enrolled', 'are you (currently )?(a )?(current )?student', 'enrolled (in|at) (a|an) (accredited )?(university|college|degree)', 'returning to school']
+  types: [select, radio, combobox, checkbox]
+  fact: candidate.education.currently_enrolled
+- id: major
+  qclass: FACTUAL
+  label: ['\bmajor\b', 'field of study', 'discipline', 'area of study', 'concentration', 'program of study']
+  exclude: ['minor', 'gpa', 'grade']
+  facts: [candidate.education.major]
+- id: minor
+  qclass: FACTUAL
+  label: ['\bminor\b']
+  fact: candidate.education.minor
+- id: degree
+  qclass: FACTUAL
+  label: ['^degree', 'degree (name|title)', 'what degree', 'degree obtained', 'degree pursuing']
+  derived: degree_name
+- id: school
+  qclass: FACTUAL
+  label: ['school', 'university', 'college', 'institution', 'education', 'alma mater']
+  exclude: ['high school', 'level', 'graduat', 'gpa', 'year', 'degree', 'major', 'start', 'end date', 'currently']
+  fact: candidate.education.university
+
+# ---------------------------------------------------------------- work authorization / eligibility
+- id: authorized_without_sponsorship
+  qclass: FACTUAL
+  label: ['authori[sz]ed to work.{0,80}without (the need for |requiring |needing |any )?(current or future )?(employer |visa )?sponsor', 'eligible to work.{0,80}without (the need for |requiring )?(visa )?sponsor']
+  types: [select, radio, combobox, checkbox]
+  exclude: ['unrestricted', '\bopt\b', '\bcpt\b', 'through']
+  derived: authorized_without_sponsorship
+- id: sponsorship
+  qclass: FACTUAL
+  label: ['sponsor', '\bvisa\b.{0,40}(require|need|status)', '(require|need).{0,40}\bvisa\b', 'h-?1b', 'immigration (support|assistance|status)', 'employment visa', 'work visa']
+  types: [select, radio, combobox, checkbox]
+  exclude: ['which visa', 'what visa', 'type of visa', 'current (immigration|visa) status', 'describe', 'explain']
+  derived: requires_sponsorship
+- id: work_authorized
+  qclass: FACTUAL
+  label: ['authori[sz]ed to work', 'eligible to work', 'legal(ly)? (able|permitted|eligible|authori[sz]ed) to work', 'right to work', 'work (authori[sz]ation|permit)', 'permitted to work', 'legal right to work']
+  types: [select, radio, combobox, checkbox]
+  exclude: ['without sponsor', 'unrestricted', '\bopt\b', '\bcpt\b', 'through', 'in-person', 'office', 'on-?site', 'remote', 'hybrid']
+  derived: work_authorized
+- id: us_person_export
+  qclass: FACTUAL
+  label: ['\bu\.?s\.? person', 'itar', 'export (control|administration)', '\bear\b', 'deemed export']
+  types: [select, radio, combobox, checkbox]
+  derived: us_person
+- id: citizenship_country
+  qclass: FACTUAL
+  label: ['country of citizenship', 'citizenship\??$', 'what is your citizenship', 'nationality', 'countr(y|ies) of citizenship']
+  derived: citizenships
+- id: citizen_or_pr
+  qclass: FACTUAL
+  label: ['citizen.{0,60}(permanent resident|green card|lawful permanent)', '(permanent resident|green card).{0,60}citizen']
+  types: [select, radio, combobox, checkbox]
+  derived: citizen_or_pr
+- id: citizen
+  qclass: FACTUAL
+  label: ['citizen']
+  types: [select, radio, combobox, checkbox]
+  derived: is_citizen
+- id: permanent_resident
+  qclass: FACTUAL
+  label: ['permanent resident', 'green card', 'lawful permanent']
+  types: [select, radio, combobox, checkbox]
+  derived: permanent_resident
+- id: security_clearance_active
+  qclass: FACTUAL
+  label: ['(active|current|hold|have).{0,30}(security )?clearance', 'clearance level']
+  fact: candidate.eligibility.security_clearance
+- id: clearance_obtainable
+  qclass: FACTUAL
+  label: ['(able|willing|eligible).{0,30}(obtain|get|maintain).{0,20}clearance']
+  fact: candidate.eligibility.can_obtain_clearance
+- id: age_18
+  qclass: FACTUAL
+  label: ['18 years', 'age of 18', 'at least 18', 'over 18', 'legal age', '18 or older', 'eighteen']
+  types: [select, radio, combobox, checkbox]
+  fact: candidate.eligibility.age_18_or_older
+
+# ---------------------------------------------------------------- experience
+- id: previously_employed
+  qclass: FACTUAL
+  label: ['(previously|ever|formerly) (been )?(employed|worked) (by|for|at|with) (us|this company|the company|our|{company})', 'former (employee|intern) of (us|this company|our|{company})', 'have you (ever )?(previously )?worked (for|at) (us|this company|the company|our|{company})', 'previous(ly)? (employment|intern(ed)?) (with|at) (us|this company|our|{company})', 'are you (a )?current or former (employee|intern|contractor)', '(worked|been employed) (for|at|by) {company}', '{company}.{0,40}(former|current|previous) (employee|intern)']
+  types: [select, radio, combobox, checkbox]
+  derived: previously_employed
+- id: current_employer
+  qclass: FACTUAL
+  label: ['current (company|employer)', 'present employer', 'most recent (company|employer)', '^company$', '^employer$']
+  exclude: ['previous', 'former']
+  fact: candidate.experience.current_employer
+- id: current_title
+  qclass: FACTUAL
+  label: ['current (job )?title', 'current (role|position)', 'most recent (job )?title', '^title$', '^job title$']
+  fact: candidate.experience.current_title
+- id: years_experience
+  qclass: FACTUAL
+  label: ['^(total )?years of (professional |relevant |work )?experience', 'how many years of (professional |relevant |work |full-?time )?(work )?experience\??$', '^years experience']
+  exclude: ['with ', 'using', ' in ', 'until', 'graduat']
+  types: [text, number, select, combobox, radio]
+  fact: candidate.experience.total_years
+
+- id: todays_date
+  qclass: FACTUAL
+  label: ['^date$', "today'?s date", 'signature date', 'date signed', '^current date', 'date of (signature|signing)']
+  derived: today
+
+# ---------------------------------------------------------------- preferences
+- id: how_heard
+  qclass: PREFERENCE
+  label: ['how did you (hear|learn|find out)', 'where did you (hear|find|learn|see)', 'how were you referred', 'referral source', '^source$', 'how did you come across', 'how did you discover']
+  pref: preferences.application.contact_source
+- id: referred
+  qclass: PREFERENCE
+  label: ['were you referred', 'referred by (an|a current) employee', 'employee referral', 'do you have a referral', 'referred to this']
+  exclude: ['name', 'who', 'email']
+  types: [select, radio, combobox, checkbox]
+  pref: preferences.application.referred
+- id: relocate
+  qclass: PREFERENCE
+  label: ['relocat']
+  types: [select, radio, combobox, checkbox]
+  pref: preferences.application.willing_to_relocate
+- id: travel
+  qclass: PREFERENCE
+  label: ['willing to travel', 'able to travel', 'travel (requirement|up to|\d+%)', 'comfortable (with )?travel']
+  types: [select, radio, combobox, checkbox]
+  pref: preferences.application.willing_to_travel
+- id: start_date
+  qclass: PREFERENCE
+  label: ['start date', 'available to start', 'available start', 'start month', 'earliest (possible )?start', 'when can you start', 'availability date', 'date available']
+  exclude: ['education', 'school', 'degree', 'university']
+  pref: preferences.application.available_start_date
+- id: salary
+  qclass: PREFERENCE
+  label: ['salary', 'compensation (expectation|requirement)', 'expected (pay|compensation|hourly)', 'desired (pay|compensation|salary|wage|rate)', 'pay expectation', 'hourly rate']
+  pref: preferences.application.expected_salary
+- id: sms_opt_in
+  qclass: CONSENT
+  label: ['text message', '\bsms\b', 'receive texts', 'whatsapp']
+  types: [checkbox, radio, select, combobox]
+  pref: preferences.application.sms_opt_in
+- id: background_check
+  qclass: CONSENT
+  label: ['background (check|screening)', 'drug (test|screen)']
+  pref: preferences.application.consent_background_check
+- id: privacy_ack
+  qclass: CONSENT
+  label: ['privacy (policy|notice|statement)', 'consent to (the )?(processing|collection|use)', 'data (protection|processing)', 'gdpr', 'personal (data|information) (will be|is) (processed|used)', 'candidate privacy']
+  types: [checkbox, radio, select, combobox]
+  pref: preferences.application.accept_privacy_policy
+- id: terms_ack
+  qclass: CONSENT
+  label: ['terms (of (use|service)|and conditions)', 'i (have read|agree|acknowledge|accept)', 'acknowledge', 'by (checking|selecting)']
+  types: [checkbox, radio, select, combobox]
+  pref: preferences.application.accept_terms
+- id: certify
+  qclass: CONSENT
+  label: ['certify', 'attest', 'information (provided |submitted )?(is|are) (true|accurate|correct|complete)', 'true and (complete|correct|accurate)', 'to the best of my knowledge']
+  types: [checkbox, radio, select, combobox]
+  pref: preferences.application.certify_truthfulness
+
+# ---------------------------------------------------------------- EEO (never inferred)
+- id: eeo_transgender
+  qclass: EEO
+  label: ['transgender', 'gender identity (is|differ)', 'identify as trans']
+  eeo: transgender
+- id: eeo_sexual_orientation
+  qclass: EEO
+  label: ['sexual orientation', 'lgbt']
+  eeo: sexual_orientation
+- id: eeo_hispanic
+  qclass: EEO
+  label: ['hispanic', 'latin[oax]']
+  eeo: hispanic_latino
+- id: eeo_race
+  qclass: EEO
+  label: ['\brace\b', 'ethnicit', 'racial']
+  eeo: race
+- id: eeo_gender
+  qclass: EEO
+  label: ['gender', '^sex$', '\bsex\b']
+  eeo: gender
+- id: eeo_veteran
+  qclass: EEO
+  label: ['veteran', 'military (service|status)', 'armed forces', 'protected veteran']
+  eeo: veteran_status
+- id: eeo_disability
+  qclass: EEO
+  label: ['disabilit', 'handicap', 'self-identification of disability']
+  eeo: disability_status
+
+# ---------------------------------------------------------------- written (templates + Astra)
+- id: cover_letter_text
+  qclass: WRITTEN
+  types: [textarea, text]
+  label: ['cover letter', 'motivation letter', 'letter of (interest|motivation)']
+  written: cover_letter
+- id: why_company
+  qclass: WRITTEN
+  label: ['why (do you want to|would you like to|are you interested in|do you wish to) (work|join|intern)', 'why (us|this company|our company)\b', 'what (excites|interests|draws|attracts|motivates) you (most )?(about|to) (us|our|working|joining|this company|apply)', 'why are you applying', 'what made you (want to )?apply', 'interest in (our|the) company', 'about our (company|mission)']
+  exclude: ['role', 'position', 'team\b']
+  written: why_company
+  answer_when_optional: true
+- id: why_role
+  qclass: WRITTEN
+  label: ['why (are you interested in |do you want )?(this|the) (role|position|internship|team|opportunity)', 'interest(ed)? in (this|the) (role|position|internship|team)', 'what (excites|interests) you about (this|the) (role|position|internship|team)', 'why (this|the) (role|position)']
+  written: why_role
+  answer_when_optional: true
+- id: technical_project
+  qclass: WRITTEN
+  label: ['project (you( are|''re)? (most )?proud|you have worked on|you worked on)', 'describe (a|one) (technical |software |personal |recent )?project', 'tell us about (a|one|your) (technical |favorite |recent )?project', 'something you(''ve| have) built']
+  written: technical_project
+- id: challenging_project
+  qclass: WRITTEN
+  label: ['(most )?(challenging|difficult|hardest) (technical )?(problem|project|bug|challenge)', 'technical challenge', 'overcame a (technical )?challenge']
+  written: challenging_project
+- id: leadership
+  qclass: WRITTEN
+  label: ['leadership', 'time you led', 'took (the )?lead', 'led a team']
+  written: leadership
+- id: conflict
+  qclass: WRITTEN
+  label: ['conflict', 'disagree', 'difficult (team ?mate|coworker|person)']
+  written: conflict
+- id: teamwork
+  qclass: WRITTEN
+  label: ['team ?work', 'work(ed)? (in|on|with) a team', 'collaborat']
+  written: teamwork
+- id: failure
+  qclass: WRITTEN
+  label: ['fail(ure|ed)', 'mistake', 'setback', 'did not go (as planned|well)']
+  written: failure
+- id: about_yourself
+  qclass: WRITTEN
+  label: ['tell us (a bit |a little )?about yourself', 'introduce yourself', 'describe yourself', 'who are you']
+  written: other_common_questions
+- id: additional_info
+  qclass: WRITTEN
+  label: ['anything else', 'additional (information|comments|info)', 'is there anything', 'other (comments|information)']
+  written: other_common_questions
