@@ -242,7 +242,7 @@ def test_existing_version_one_database_migrates_without_losing_work(tmp_path):
     restarted = Database(path)
     restarted.initialize()
     restarted.initialize()
-    assert restarted.schema_version() == 2
+    assert restarted.schema_version() == 3
     assert restarted.meta_get("recovery_marker") == "keep me"
     assert len(list((tmp_path / "backups").glob("schema-v1-*.sqlite3"))) == 1
 

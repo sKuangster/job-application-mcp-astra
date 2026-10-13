@@ -239,7 +239,47 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     print(f"[{'ok' if email_provider().configured() else '--'}] email verification provider: {email_provider().name}")
     print(f"[--] auto_submit: {cfg.settings.automation.auto_submit}   browser workers: "
           f"{cfg.settings.automation.max_concurrent_applications}   reasoning: {cfg.settings.reasoning.provider}")
+    try:
+        from applypilot.perplexica import PerplexicaAdapter
+
+        state = asyncio.run(PerplexicaAdapter(cfg.settings.research.perplexica).health())
+        print(f"[{'ok' if state['state'] == 'ready' else '--'}] Perplexica: {state['state']} (optional; research can use configured public sources)")
+    except Exception as exc:
+        print(f"[--] Perplexica diagnostic unavailable: {type(exc).__name__}")
+    try:
+        response = httpx.get(cfg.settings.reasoning.ollama.base_url.rstrip('/') + '/api/tags', timeout=3)
+        response.raise_for_status()
+        models = {m.get('name') for m in response.json().get('models', [])}
+        name = cfg.settings.reasoning.ollama.model
+        print(f"[{'ok' if name in models or name + ':latest' in models else '--'}] Ollama model: {name}")
+    except Exception as exc:
+        print(f"[--] Ollama unavailable: {type(exc).__name__}")
     return 0 if ok else 1
+
+
+def cmd_experiences(args: argparse.Namespace) -> int:
+    from applypilot.db import Database
+    from applypilot.experiences import ExperienceBank
+
+    cfg = _cfg(strict=False)
+    db = Database(cfg.paths.db_path)
+    db.initialize()
+    bank = ExperienceBank(cfg, db)
+    if args.action == "list":
+        print(json.dumps(bank.entries(), indent=2))
+    elif args.action == "suggest":
+        print(json.dumps(bank.suggest(), indent=2))
+    elif args.action in {"confirm", "reject"}:
+        if not args.id:
+            raise SystemExit("--id is required")
+        bank.confirm(args.id, approved=args.action == "confirm")
+        print(f"{args.id}: {args.action}")
+    else:
+        if not args.notes_file:
+            raise SystemExit("--notes-file is required; supply a local text file with the real anecdote")
+        core = Path(args.notes_file).read_text(encoding="utf-8")
+        print(bank.store({"title": args.title or "Experience", "core": core, "status": "confirmed", "source": {"kind": "user"}}))
+    return 0
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
@@ -442,6 +482,12 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_pair)
     sub.add_parser("mcp", help="stdio MCP server (proxies to the running backend)").set_defaults(func=cmd_mcp)
     sub.add_parser("doctor", help="diagnose configuration and connectivity").set_defaults(func=cmd_doctor)
+    p = sub.add_parser("experiences", help="manage the private local experience bank")
+    p.add_argument("action", choices=["list", "suggest", "confirm", "reject", "add"])
+    p.add_argument("--id")
+    p.add_argument("--title")
+    p.add_argument("--notes-file")
+    p.set_defaults(func=cmd_experiences)
     p = sub.add_parser("sync", help="ingest SimplifyJobs listings and queue jobs")
     p.add_argument("--mode", choices=["backlog", "new_jobs"], default="backlog")
     p.set_defaults(func=cmd_sync)

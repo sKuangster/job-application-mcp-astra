@@ -286,6 +286,12 @@ class Resolver:
                 continue
             if mem["qclass"] != c.qclass:
                 continue
+            if c.qclass == "WRITTEN" and c.entry and c.entry.template in {"why_company", "why_role", "cover_letter"}:
+                if mem["company_norm"] != cn or mem.get("role") != ctx.job.get("title"):
+                    continue
+                ids = mem.get("research_ids") or []
+                if ids and any(row["expires_at"] <= time.time() for row in self.db.research_by_ids(ids)):
+                    continue
             if same_company_only:
                 if mem["company_norm"] != cn:
                     continue

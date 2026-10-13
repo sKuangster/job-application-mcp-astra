@@ -17,6 +17,7 @@ import asyncio
 import contextlib
 import datetime as dt
 import logging
+import sqlite3
 import time
 import traceback
 import uuid
@@ -178,6 +179,7 @@ class Engine:
     async def shutdown(self, timeout: float = 20) -> None:
         """Stop at safe points: workers finish their current atomic step, then exit."""
         self.closing = True
+        await self.research.shutdown()
         self.wake()
         if self.tasks:
             done, pending = await asyncio.wait(self.tasks, timeout=timeout)
@@ -576,6 +578,30 @@ class Engine:
         target = self.resume_target(app)
         out = self.db.user_action(app_id, target, reason=reason, clear_attempts=True,
                                   data={"page_attempts": {}, "account_attempts": 0, "page_help": 0, "apply_clicks": 0})
+        if self.cfg.settings.reasoning.writing.enabled:
+            # Explicit human Resume permits a new bounded writing/research attempt.
+            # Detach only this application's unresolved waiters; shared items and
+            # successful answers remain intact. Paid cost reservations are never reset.
+            answers = {answer["field_key"]: answer for answer in self.db.answers(app_id)}
+            for item in self.db.reasoning_for_application(app_id):
+                if item["kind"] != "question" or not (item.get("result") or {}).get("needs_user"):
+                    continue
+                field_key = item["waiter_field"]
+                old_id = item["id"]
+                def detach_waiter(c: sqlite3.Connection, old_id: str = old_id,
+                                  field_key: str = field_key) -> None:
+                    c.execute("DELETE FROM reasoning_waiters WHERE item_id=? AND application_id=? AND field_key=?",
+                              (old_id, app_id, field_key))
+
+                self.db.write(detach_waiter)
+                if answers.get(field_key, {}).get("method") != "user":
+                    payload = {**item["payload"], "dedupe_key": f"resume:{app_id}:{field_key}:{uuid.uuid4().hex}"}
+                    self.reasoning.enqueue(app_id=app_id, kind="question", payload=payload, field_key=field_key)
+            job = self.db.get_job(app["job_id"]) or {}
+            keys = [f"research:{company_norm(job.get('company', ''))}:{self.research.scope_key(job.get('company', ''), job, scope)}"
+                    for scope in ("company", "role", "technology")]
+            self.db.write(lambda c: c.executemany("UPDATE research_tasks SET state='PENDING',attempts=0,available_at=0 "
+                                                "WHERE task_key=? AND state='FAILED'", [(key,) for key in keys]))
         self.wake()
         return out
 

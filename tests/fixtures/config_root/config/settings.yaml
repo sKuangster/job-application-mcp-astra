@@ -20,4 +20,9 @@ research:
   enabled: false
 reasoning:
   provider: mcp                      # fixture tests use SimulatedAstra; never live model APIs
+  writing:
+    enabled: false                   # baseline fixtures test existing routing; new writing fixtures opt in
+  hybrid:
+    local_warmup_patience_seconds: 0
+    local_operational_retries: 2
   batch_collect_seconds: 0.2

@@ -209,6 +209,19 @@ class HybridSettings(_Strict):
     # Page/eligibility decisions have no model confidence field, so validate their shape
     # and always obtain cheap-cloud review after a local answer, when enabled.
     review_local_page_and_eligibility: bool = True
+    local_warmup_patience_seconds: float = Field(180, ge=0, le=3600)
+    local_operational_retries: int = Field(5, ge=1, le=30)
+    max_queue_wait_seconds: float = Field(600, ge=10, le=86400)
+
+
+class WritingSettings(_Strict):
+    enabled: bool = True
+    local_revision_limit: int = Field(2, ge=0, le=5)
+    semantic_evaluation: bool = True
+    fit_synthesis: bool = True
+    cloud_share_full_profile: bool = False
+    experience_file: str = "config/experiences.local.yaml"
+    max_evidence_items: int = Field(3, ge=1, le=8)
 
 
 class ReasoningSettings(_Strict):
@@ -222,6 +235,7 @@ class ReasoningSettings(_Strict):
     ollama: OllamaSettings = OllamaSettings()
     gemini: GeminiSettings = GeminiSettings()
     hybrid: HybridSettings = HybridSettings()
+    writing: WritingSettings = WritingSettings()
 
 
 class AnswerSettings(_Strict):
@@ -239,9 +253,37 @@ class EligibilitySettings(_Strict):
     use_default_rules: bool = True
 
 
+class PerplexicaSettings(_Strict):
+    base_url: str = "http://127.0.0.1:3001"
+    searxng_url: str = "http://127.0.0.1:8081"
+    provider_name: str = "Ollama"
+    chat_model: str = "qwen2.5:7b"
+    embedding_model: str = "nomic-embed-text:latest"
+    optimization_mode: Literal["speed", "balanced", "quality"] = "balanced"
+    timeout: float = Field(120, ge=5, le=600)
+
+    @field_validator("base_url", "searxng_url")
+    @classmethod
+    def local_service_only(cls, value: str) -> str:
+        from urllib.parse import urlsplit
+
+        parts = urlsplit(value)
+        if (parts.scheme not in {"http", "https"} or parts.hostname not in {"localhost", "127.0.0.1", "::1"}
+                or parts.username or parts.password or parts.query or parts.fragment):
+            raise ValueError("Perplexica must use an explicit loopback HTTP(S) service URL")
+        return value.rstrip("/")
+
+
 class ResearchSettings(_Strict):
     enabled: bool = True
+    provider: Literal["perplexica", "official", "none"] = "perplexica"
+    perplexica: PerplexicaSettings = PerplexicaSettings()
     cache_ttl_seconds: int = Field(14 * 86400, ge=60)
+    role_ttl_seconds: int = Field(3 * 86400, ge=60)
+    technology_ttl_seconds: int = Field(7 * 86400, ge=60)
+    max_requests_per_scope: int = Field(2, ge=1, le=5)
+    retry_seconds: float = Field(15, ge=0, le=600)
+    max_wait_seconds: float = Field(300, ge=10, le=1800)
     max_pages: int = Field(3, ge=0, le=10)
     fetch_timeout: float = Field(15, ge=1, le=120)
     max_bytes: int = Field(2_000_000, ge=10_000)

@@ -36,6 +36,10 @@ resumes/*
 !resumes/.gitkeep
 !resumes/README.md
 /artifacts/
+/.services/
+/experiences/
+/config/experiences.yaml
+/config/experiences.yml
 
 # ApplyPilot
 config/*.local.yaml

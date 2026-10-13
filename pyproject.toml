@@ -17,6 +17,7 @@ dependencies = [
   "PyYAML>=6,<7",
   "beautifulsoup4>=4.13,<5",
   "python-dotenv>=1,<2",
+  "pypdf>=5,<7",
 ]
 
 [project.optional-dependencies]

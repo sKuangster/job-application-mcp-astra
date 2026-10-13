@@ -152,6 +152,31 @@ def create_app(cfg: AppConfig, *, db: Database | None = None, bridge: BrowserBri
 
     guarded = [Depends(auth)]
 
+    @app.get("/api/research/status", dependencies=guarded)
+    async def research_status() -> dict[str, Any]:
+        return await service.research_status()
+
+    @app.get("/api/experiences", dependencies=guarded)
+    async def experiences() -> dict[str, Any]:
+        from applypilot.experiences import ExperienceBank
+
+        return {"items": ExperienceBank(cfg, db).entries()}
+
+    @app.post("/api/experiences", dependencies=guarded)
+    async def experience_action(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        from applypilot.experiences import ExperienceBank
+
+        bank = ExperienceBank(cfg, db)
+        action = body.get("action")
+        if action == "suggest":
+            return {"items": bank.suggest()}
+        if action in {"confirm", "reject"}:
+            bank.confirm(str(body.get("id") or ""), approved=action == "confirm")
+            return {"id": body["id"], "status": "confirmed" if action == "confirm" else "rejected"}
+        if action == "add":
+            return {"id": bank.store({**body, "status": "confirmed", "source": {"kind": "user"}})}
+        raise ValueError("experience action must be suggest, confirm, reject or add")
+
     @app.exception_handler(InvalidTransition)
     async def _invalid(_: Request, exc: InvalidTransition) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=409)

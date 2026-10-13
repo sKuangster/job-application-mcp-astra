@@ -367,10 +367,27 @@ class Service:
             "cost": self.db.cost_totals(),
             "research_runs": self.e.research.metrics["runs"], "research_cache_hits": self.e.research.metrics["cache_hits"],
             "research_pages_fetched": self.e.research.metrics["pages_fetched"],
+            "research_requests": self.e.research.metrics["requests"],
+            "provider_performance": self.db.query("SELECT provider,model,COUNT(*) AS requests, AVG(duration_ms) AS latency_ms, "
+                                                  "SUM(CASE WHEN ok=0 THEN 1 ELSE 0 END) AS failures FROM model_calls "
+                                                  "WHERE kind LIKE 'completion%' GROUP BY provider,model"),
             "answers_by_method": by_method, "retries": retries,
             "bridge": self.e.bridge.metrics, "engine": {k: v for k, v in self.e.metrics.items()},
             "submitted_per_day": list(reversed(per_day)),
         }
+
+    async def research_status(self) -> dict[str, Any]:
+        import json
+
+        tasks = self.db.query("SELECT company,scope,state,attempts,available_at,updated_at,diagnostics FROM research_tasks ORDER BY updated_at DESC LIMIT 100")
+        for task in tasks:
+            task["diagnostics"] = json.loads(task["diagnostics"])
+        return {"provider": self.cfg.settings.research.provider, "enabled": self.cfg.settings.research.enabled,
+                "perplexica": await self.e.research.perplexica.health(), "tasks": tasks,
+                "last_discovery": self.db.meta_get("research_provider:perplexica", {}),
+                "cached": self.db.query("SELECT company,topic,retrieved_at,expires_at,json_array_length(sources) AS source_count "
+                                        "FROM company_research WHERE topic NOT LIKE 'fit:%' ORDER BY retrieved_at DESC LIMIT 100"),
+                "local_revisions": self.db.query("SELECT item_id,revisions,tier,reason FROM reasoning_routes WHERE revisions>0 ORDER BY updated_at DESC LIMIT 100")}
 
     def config_report(self) -> dict[str, Any]:
         readiness = self.cfg.readiness()
