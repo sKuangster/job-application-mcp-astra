@@ -4,7 +4,7 @@
   "private": true,
   "description": "ApplyPilot Firefox extension: tests, lint, packaging",
   "scripts": {
-    "test": "node --test tests/js/ && node --test tests/js/ui/",
+    "test": "node --test tests/js/ && node --test tests/js/ui/ && node --test tests/browser/dom.test.cjs tests/browser/ownership.test.cjs",
     "lint:extension": "web-ext lint --source-dir firefox --ignore-files icons/make_icons.py",
     "build:extension": "web-ext build --source-dir firefox --artifacts-dir dist --overwrite-dest --ignore-files icons/make_icons.py",
     "sign:extension": "web-ext sign --source-dir firefox --artifacts-dir dist --channel unlisted --ignore-files icons/make_icons.py",

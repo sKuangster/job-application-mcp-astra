@@ -1,10 +1,10 @@
 # ApplyPilot architecture
 
-## Principle: Astra is the brain, not the hands
+## Principle: semantic providers reason; deterministic workers act
 
 The local system does every deterministic thing: ingestion, identity and duplicates,
 eligibility, resume choice, navigation, field detection, deterministic answers, uploads,
-validation and submission. Astra (ChatGPT over MCP) is consulted only for semantic work:
+validation and submission. The hybrid router (or optional ChatGPT/MCP mode) handles semantic work:
 novel questions, personalized prose, ambiguous requirements, option wording that does not map,
 and unrecognized pages. Those requests are batched and deduplicated.
 
@@ -49,7 +49,7 @@ and unrecognized pages. Those requests are batched and deduplicated.
 | `engine/runner.py` | Per-state handlers, page loop, filling, uploads, accounts, verification, submission protocol. |
 | `engine/validation.py` | Submission gate. |
 | `service.py`, `api.py`, `mcp_server.py`, `cli.py` | Facade, HTTP API + WS + MCP, MCP tools (one table for HTTP and stdio), command line. |
-| `providers.py` | Optional unattended OpenAI-compatible reasoning provider. |
+| `providers.py`, `hybrid.py` | Native Ollama, Gemini OpenAI-compatible API, OpenAI fallback; durable per-item routing, confidence checks, health cooldowns and human escalation. |
 | `firefox/background/` | `bridge-core.js` (transport-agnostic router: ownership, per-app mutex, frame routing, scan merge) + `background.js` (Firefox driver, WebSocket, pairing, badge/notifications). |
 | `firefox/content/` | `dom-engine.js` (scan/fill/upload/click, shadow DOM, custom widgets, page-kind and CAPTCHA detection) + `adapters.js` (Greenhouse, Lever, Ashby, Workday, iCIMS, SmartRecruiters, Simplify, generic). |
 | `firefox/ui/` | Popup, dashboard (history/audit/attention/logs/settings), options. |
@@ -110,5 +110,7 @@ serialized. Element ids embed the frame id. CAPTCHA provider frames are never in
 `application_events` is the per-application, ordered audit trail (component, type, level,
 message, redacted data, worker id). Structured JSON logs carry application, job and worker ids
 via context variables. `model_calls` counts reasoning batches, items and characters (and tokens
-for the API provider). Per-application metrics record page wait time, retries, deterministic vs
+for each provider). Migration 002 adds model, estimated USD, escalation reasons, conservative
+atomic budget reservations, and durable reasoning routes. Unsettled crash reservations remain
+charged. Per-application cost splits shared requests equally. Per-application metrics record page wait time, retries, deterministic vs
 generated answers, and active seconds.

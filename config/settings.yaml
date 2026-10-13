@@ -50,7 +50,7 @@ browser:
   debug_action_delay_ms: 0              # default delay between browser actions in watch/debug mode
 
 reasoning:
-  provider: openai                       # mcp = Astra answers via MCP (default) | openai = unattended API | none
+  provider: hybrid                    # hybrid (autonomous default) | mcp | openai | none
   batch_max_items: 12                 # questions per Astra round-trip
   batch_collect_seconds: 2.0          # wait briefly so one round-trip covers more questions
   item_lease_seconds: 900
@@ -62,6 +62,37 @@ reasoning:
     api_key_env: OPENAI_API_KEY
     max_output_tokens: 4000
     timeout: 120
+    enabled: true
+    input_usd_per_million: 0.25
+    output_usd_per_million: 2.00
+  ollama:
+    enabled: true
+    model: qwen2.5:7b
+    base_url: http://127.0.0.1:11434
+    max_output_tokens: 4000
+    timeout: 120
+    input_usd_per_million: 0
+    output_usd_per_million: 0
+  gemini:
+    enabled: false
+    model: gemini-2.5-flash
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    api_key_env: GEMINI_API_KEY
+    max_output_tokens: 4000
+    timeout: 120
+    input_usd_per_million: 0.30
+    output_usd_per_million: 2.50
+  hybrid:
+    premium_enabled: false
+    daily_budget_usd: 1.00
+    application_budget_usd: 0.10
+    premium_calls_per_application: 3
+    retries_per_tier: 2
+    retry_seconds: 10
+    health_cooldown_seconds: 60
+    question_confidence: 0.70
+    written_confidence: 0.80
+    review_local_page_and_eligibility: true
 
 answers:
   reuse_threshold: 0.93               # similarity to reuse a stored non-factual answer

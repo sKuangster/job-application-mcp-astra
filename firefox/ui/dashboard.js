@@ -267,6 +267,7 @@
 
   function fmtMetric(key, v) {
     var k = key.toLowerCase();
+    if (/_usd/.test(k)) return '$' + v.toFixed(6);
     if (/(_ms|millis)/.test(k)) return U.fmtDuration(v / 1000);
     if (/(seconds|_secs?$|_s$|duration|time_per|wait_time|elapsed)/.test(k)) return U.fmtDuration(v);
     if (/(ratio|rate|share|fraction|pct|percent)/.test(k)) return v <= 1 ? Math.round(v * 1000) / 10 + '%' : Math.round(v * 10) / 10 + '%';

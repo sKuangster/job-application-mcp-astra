@@ -1,15 +1,16 @@
 # ApplyPilot
 
 Autonomous, auditable internship applications through **your real Firefox**, with
-**Astra (ChatGPT) as the brain** over MCP and a local engine as the hands.
+local Ollama reasoning, optional Gemini cloud reasoning, and optional OpenAI escalation.
+ChatGPT/Astra over MCP remains available as an alternative reasoning mode.
 
 > "Apply to every open internship I am eligible for."
 
 ApplyPilot reads the [SimplifyJobs Summer 2027 list](https://github.com/SimplifyJobs/Summer2027-Internships),
 follows each job's **Simplify link**, checks eligibility permissively, picks the right resume,
 opens the application in a dedicated Firefox window, fills everything it can from your
-source-of-truth files, asks Astra **only** for questions that need judgement (batched across
-all running applications), validates the whole application, submits it, proves the
+source-of-truth files, routes unresolved semantic questions through validated model providers,
+validates the whole application, submits only when configured or explicitly approved, proves the
 submission succeeded, and records exactly what happened.
 
 ```
@@ -17,7 +18,7 @@ Astra / ChatGPT ──MCP──►  applypilot backend (Python, 127.0.0.1:8765)
                           ├─ persistent queue + state machine (SQLite, WAL)
                           ├─ prep workers  (Simplify page, eligibility, resume)    ← HTTP only
                           ├─ browser workers (one Firefox window each)             ← via bridge
-                          ├─ reasoning queue (dedup + batching for Astra)
+                          ├─ reasoning queue (Ollama → Gemini → optional OpenAI → human)
                           ├─ research cache, answer memory, audit log
                           └─ HTTP API + dashboard
 Firefox extension ◄──WebSocket──┘   DOM engine + ATS adapters in each owned window
@@ -48,7 +49,8 @@ cd job-application-mcp-astra
 
 macOS/Linux/WSL: `./scripts/setup.sh`, `./scripts/run.sh --pair`, `./scripts/test.sh`.
 
-Everything after this is: install the extension once, connect Astra once, then talk to Astra.
+Install the extension, configure the providers below, and start the backend. Hybrid mode
+requires no open chat session. Connecting Astra is optional.
 
 ---
 
@@ -65,7 +67,9 @@ All candidate information is **data**. Nothing about you is hard-coded, and noth
 | `templates/*.md` | Your guidance for written answers (why company, why role, project, leadership, teamwork, conflict, challenge, failure, other, cover letter). See [templates/README.md](templates/README.md). |
 | `resumes/` | Your resume files. See [resumes/README.md](resumes/README.md). |
 
-Keep real data out of git: every file has a git-ignored twin that is merged on top
+Keep real data out of git: candidate.yaml, preferences.yaml, profile/ and resumes are ignored.
+Public worksheets are preserved under config/examples/ and setup copies them only if absent.
+Configuration files also have a git-ignored twin that is merged on top
 (`config/candidate.local.yaml`, `config/preferences.local.yaml`, `config/settings.local.yaml`,
 `profile/profile.local.md`, `templates/<name>.local.md`). A fully filled **fictional** example
 is in [`config/examples/candidate.example.yaml`](config/examples/candidate.example.yaml).
@@ -212,6 +216,102 @@ endpoint supports it, are checked again against the queued item, and get at most
 attempts. Exhausted repairs move the application to **NEEDS_USER** with diagnostics instead of
 leaving it blocked in **APPLYING**. Watch Mode reports request, retry, and recovery events using
 structural metadata only; prompts, answers, credentials, and secret URL parameters are not printed.
+
+### Autonomous hybrid reasoning (default)
+
+The resolver tries explicit user answers, candidate facts/preferences/EEO, derived values,
+and validated answer memory before queueing semantic work. `reasoning.provider: hybrid`
+starts backend consumers: **Ollama → Gemini → optional OpenAI → human**. Each item has its
+own durable tier, attempt count, retry deadline, and escalation events. Other modes remain
+`mcp`, `openai` (direct single-provider), and `none` (no automatic model consumer).
+
+Unresolved factual, EEO, preference, consent, and unclassified questions go to human input;
+models cannot supply missing candidate facts. Written/job-specific answers require configured
+confidence; page and eligibility decisions receive a fresh cheap-cloud review after local
+reasoning when that tier is enabled. All results pass the existing answer and submission gates.
+Model confidence is self-reported, not a guarantee of correctness: keep final review enabled.
+
+1. Install [Ollama](https://ollama.com/download), start its local service (`ollama serve` if
+   it is not already running), then run `ollama pull qwen2.5:7b`. The model download needs
+   several GB of disk/RAM. Change `reasoning.ollama.model` to match any alternative you pull.
+2. Run `applypilot setup`, fill the ignored candidate/preferences/profile files, and add resumes.
+   Existing local files are never overwritten. Run `applypilot doctor`.
+3. Put cloud credentials in the ignored `.env`: `GEMINI_API_KEY=...` and, optionally,
+   `OPENAI_API_KEY=...`. Creating keys does not enable a cloud tier by itself.
+4. Create an ignored `config/settings.local.yaml` overlay:
+
+```yaml
+automation:
+  auto_submit: false
+reasoning:
+  provider: hybrid
+  ollama:
+    enabled: true
+    model: qwen2.5:7b
+    base_url: http://127.0.0.1:11434
+  gemini:
+    enabled: true
+    model: gemini-2.5-flash
+  openai:
+    model: gpt-5-mini
+    input_usd_per_million: 0.25
+    output_usd_per_million: 2.00
+  hybrid:
+    premium_enabled: false   # set true only when you authorize this paid fallback tier
+    daily_budget_usd: 1.00
+    application_budget_usd: 0.10
+    premium_calls_per_application: 3
+```
+
+5. Start `applypilot run` and pair the Firefox extension (`applypilot pair`). For one stored
+   job, use `applypilot test-one --dry-run --no-sync` then `applypilot test-one --watch --no-sync`.
+   For the backlog, explicitly use `applypilot start --mode backlog`. No chat/tunnel is required.
+6. Inspect status, provider health, application events, and `get_metrics`/`GET /api/metrics`.
+   Restarting leaves the autopilot stopped; `applypilot resume` continues the durable scope/queue.
+
+Gemini uses its [OpenAI-compatible endpoint](https://ai.google.dev/gemini-api/docs/openai);
+Ollama uses native `/api/chat` with schema output and token usage. Defaults for Gemini Flash
+are $0.30/$2.50 per million input/output tokens from the
+[provider pricing page](https://ai.google.dev/gemini-api/docs/pricing). Prices are configurable;
+update rates whenever you change model or tariff. OpenAI is called the premium *escalation tier*;
+the default remains the existing `gpt-5-mini`, and a larger model can be configured explicitly.
+
+Accounting records provider, model, input/output tokens, estimated USD, and escalation reason.
+Shared requests split cost equally across applications. Budgets use UTC days and lifetime
+application spend. Each HTTP completion/repair reserves conservative maximum cost atomically
+before sending; retries and failed calls count. Missing usage charges the reserved estimate.
+Crash reservations remain charged because the API may have received the request. These are
+estimates, not billing reconciliation; set a provider-side spending cap as well. A zero daily
+budget blocks paid completion requests while permitting local Ollama.
+Before upgrading an existing database schema, initialization creates a consistent SQLite backup
+in `data/backups/schema-v<old-version>-*.sqlite3`. Keep that snapshot alongside the previous Git
+checkpoint if you need to restore the old backend and database together.
+
+Metadata-only health probes never generate answers. Transient failures persist exponential
+retry deadlines and provider cooldowns; expired reasoning leases recover after crashes. Exhausted
+tiers or budgets park the application for the human. Human review, manual authentication and
+CAPTCHA completion remain part of the workflow.
+
+### Optional Windows UI Automation attention fallback
+
+On Windows only, install `pip install -e '.[windows-native]'`. This fallback focuses or inspects
+an explicitly bound Firefox window if extension focus fails. It verifies the exact HWND,
+Firefox executable, caption, and extension ownership; it does not read field values, synthesize
+typing, invoke controls, or submit forms. Configure an ignored settings overlay:
+
+```yaml
+browser:
+  windows_native:
+    enabled: true
+    bindings:
+      "7":                         # extension window_id from application diagnostics
+        handle: 123456             # exact Windows HWND, obtained locally with Inspect.exe
+        title: "Application — Mozilla Firefox"  # exact current window caption
+```
+
+Rebind after the window is recreated or its caption changes. This is an attention fallback,
+not a way to automate closed shadow roots, CAPTCHA controls, or trusted input requirements.
+Policy tests run on all platforms; real UI Automation needs a Windows verification run.
 
 ---
 
@@ -413,7 +513,7 @@ domain/tenant**, and at most 4 open application windows.
 Applications waiting for Astra **release their worker** (the window stays open), so workers keep
 filling other applications. Astra usage grows with the number of *novel* questions, not with
 concurrency: answers are deduplicated and batched. Failing domains cool down automatically, and
-retries use exponential backoff with jitter. Debugging stays tractable because every event carries
+application retries use exponential backoff; database contention adds jitter. Debugging stays tractable because every event carries
 application, job and worker ids, and each application's timeline is isolated.
 
 ---
@@ -438,6 +538,13 @@ application, job and worker ids, and each application's timeline is isolated.
 * `tests/integration/test_real_firefox.py`: the same against **real headless Firefox** with the real
   extension (runs when Firefox is found; set `APPLYPILOT_FIREFOX=C:\Program Files\Mozilla Firefox\firefox.exe`).
 * `tests/js`: DOM engine on every fixture, bridge core (ownership isolation), fake browser, dashboard/popup UI.
+* `tests/unit/test_hybrid.py`: mocked Ollama/Gemini/OpenAI requests, health checks, task routing,
+  confidence escalation, backend consumption without a chat session, durable retries, migration recovery,
+  concurrent budgets, premium limits, token/cost accounting, and protected facts/EEO.
+* `tests/unit/test_windows_native.py`: owned-window binding, process/caption checks, focus-only policy,
+  disabled/platform handling, and integration after extension focus failure. Real Windows UIA is unverified.
+* The full scripts also run the retained `tests/test_db.py`, `tests/test_state.py`, and `tests/browser` suites.
+  Linux/WSL scripts use `~/.local/node/bin/node` when it is available and Node is absent from PATH.
 
 ---
 
@@ -480,4 +587,6 @@ application, job and worker ids, and each application's timeline is isolated.
   with `auto_submit: false`.
 * Sites that require trusted (OS-level) input events, or that run inside closed shadow roots or
   cross-origin frames that refuse content scripts, fall back to the visual tools or NEEDS_USER.
-* ChatGPT must stay in a session to answer reasoning batches (or use `reasoning.provider: openai`).
+* MCP mode requires an active reasoning client. Hybrid and direct OpenAI modes consume work autonomously.
+* No autonomous image-understanding model is implemented; visual screenshot fallback remains assisted.
+* Windows UI Automation currently handles bounded window focus/inspection only; native filling and submission are unsupported.

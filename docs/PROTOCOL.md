@@ -259,6 +259,12 @@ message, data}`.
   one read-only scan; normal operation does this periodically and resumes automatically. A cleared
   challenge whose resulting page is still login/signup transitions to `ACCOUNT_REQUIRED`, not the
   prior applying state.
+* `reasoning.provider=hybrid` consumes the queue without an MCP session: Ollama, Gemini,
+  optionally OpenAI, then human. Tier/attempt/deadline state survives restart. Facts, EEO,
+  unresolved consent/preferences and unclassified questions require human input.
+* `/api/status` includes `reasoning_provider` and sanitized `provider_health`; `/api/metrics`
+  includes `cost.estimated_usd`, `pending_reserved_usd`, `by_provider_model`, and `by_application`.
+  Application metrics include `estimated_usd`. USD is configurable-price estimation, not a bill.
 * Unattended provider results use strict schema output when supported, followed by application-level
   validation and two repair attempts. Exhausted repairs produce a failed reasoning item plus an
   explicit recoverable `NEEDS_USER` state.
