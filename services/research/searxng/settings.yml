@@ -1,0 +1,13 @@
+use_default_settings: true
+server:
+  bind_address: 0.0.0.0
+  port: 8080
+  # SEARXNG_SECRET overrides this public placeholder at startup.
+  secret_key: replace-with-generated-runtime-secret
+  limiter: false
+search:
+  formats: [html, json]
+  safe_search: 1
+engines:
+  - name: wolframalpha
+    disabled: false

@@ -1,0 +1,7 @@
+{
+  "requested_repository": "https://github.com/ItzCrazyKns/Perplexica",
+  "maintained_repository": "https://github.com/ItzCrazyKns/Vane",
+  "api_reference_commit": "348feca3e378fb4157b217724ed508dc707f853f",
+  "api_reference_files": ["docs/API/SEARCH.md", "src/app/api/search/route.ts", "src/app/api/providers/route.ts", "src/lib/models/providers/ollama/index.ts"],
+  "note": "Image digests pin deployment independently of the source API reference. Installed compatibility is probed through /api/providers; live stack testing is explicit opt-in."
+}

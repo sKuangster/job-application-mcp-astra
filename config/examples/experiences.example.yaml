@@ -1,0 +1,7 @@
+# Copy to ignored config/experiences.local.yaml. Confirmation is a user decision.
+- id: example_debugging
+  title: Debugging a project
+  core: "Replace with a real situation, your actions, and the actual outcome. Do not invent metrics."
+  themes: [problem-solving, persistence, ownership]
+  status: suggested
+  source: {kind: user, locator: personal-notes}

@@ -43,6 +43,8 @@ and unrecognized pages. Those requests are batched and deduplicated.
 | `questions/resolver.py` | The resolution hierarchy (below). |
 | `reasoning.py` | Reasoning queue: dedup across applications, batches with shared context, answer validation, unblocking, memory write-back. |
 | `research.py` | Research decision, single-flight per company, Simplify company profile + official site pages, TTL cache, Astra-supplied research. |
+| `perplexica.py`, `evidence.py` | Maintained Perplexica/Vane API discovery/search; independent bounded public-IP document inspection, redirect/DNS guards and quotation provenance. |
+| `writing.py`, `experiences.py` | Question intents, source-linked candidate fit, progressive confirmed anecdotes, deterministic quality checks and local semantic revision feedback. |
 | `accounts.py` | Credentials from env/keyring (never stored), per-tenant account keys, pluggable email verification (IMAP). |
 | `bridge.py` | WebSocket bridge: command futures, timeouts, ownership tracking, reconnects. |
 | `engine/scheduler.py` | Worker pools, heartbeats, failure isolation and backoff, domain cool-down, control (start/pause/stop), ingestion modes, CAPTCHA watcher, housekeeping. |
@@ -114,3 +116,9 @@ for each provider). Migration 002 adds model, estimated USD, escalation reasons,
 atomic budget reservations, and durable reasoning routes. Unsettled crash reservations remain
 charged. Per-application cost splits shared requests equally. Per-application metrics record page wait time, retries, deterministic vs
 generated answers, and active seconds.
+
+Migration 003 adds durable research tasks, writing revisions/feedback and the private
+experience bank. Research and writing escalation have separate reasons/deadlines;
+explicit application Resume renews unresolved attempts while preserving shared waiters,
+completed answers, leases and all monetary reservations. Motivation answer memory is
+role/company scoped and cannot reuse expired research. See [research setup and privacy](RESEARCH.md).

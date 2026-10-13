@@ -4,6 +4,10 @@ Autonomous, auditable internship applications through **your real Firefox**, wit
 local Ollama reasoning, optional Gemini cloud reasoning, and optional OpenAI escalation.
 ChatGPT/Astra over MCP remains available as an alternative reasoning mode.
 
+For local live-web research, evidence-grounded persuasive writing and a progressive
+experience bank, see [the Windows/WSL2 research setup](docs/RESEARCH.md). It integrates
+the maintained Perplexica/Vane API with pinned SearXNG and Ollama containers.
+
 > "Apply to every open internship I am eligible for."
 
 ApplyPilot reads the [SimplifyJobs Summer 2027 list](https://github.com/SimplifyJobs/Summer2027-Internships),
@@ -226,10 +230,11 @@ own durable tier, attempt count, retry deadline, and escalation events. Other mo
 `mcp`, `openai` (direct single-provider), and `none` (no automatic model consumer).
 
 Unresolved factual, EEO, preference, consent, and unclassified questions go to human input;
-models cannot supply missing candidate facts. Written/job-specific answers require configured
-confidence; page and eligibility decisions receive a fresh cheap-cloud review after local
+models cannot supply missing candidate facts. With writing enabled, written/job-specific answers
+use substance/evidence checks and a local semantic critic, with bounded local revision. Low
+self-reported confidence alone does not reject a good answer. Page and eligibility decisions receive a fresh cheap-cloud review after local
 reasoning when that tier is enabled. All results pass the existing answer and submission gates.
-Model confidence is self-reported, not a guarantee of correctness: keep final review enabled.
+Model confidence and semantic evaluation are not guarantees of correctness: keep final review enabled.
 
 1. Install [Ollama](https://ollama.com/download), start its local service (`ollama serve` if
    it is not already running), then run `ollama pull qwen2.5:7b`. The model download needs
@@ -547,6 +552,11 @@ application, job and worker ids, and each application's timeline is isolated.
   disabled/platform handling, and integration after extension focus failure. Real Windows UIA is unverified.
 * The full scripts also run the retained `tests/test_db.py`, `tests/test_state.py`, and `tests/browser` suites.
   Linux/WSL scripts use `~/.local/node/bin/node` when it is available and Node is absent from PATH.
+* `tests/unit/test_researched_writing.py`: verified API envelopes, provenance, cache scopes, single-flight,
+  unsafe redirects/DNS pinning, intent planning, experience confirmation, local fit/critic/revision,
+  cold/busy routing, human escalation and minimal cloud payloads.
+* `tests/integration/test_live_research_stack.py`: opt-in local Perplexica/SearXNG/Ollama smoke
+  (`APPLYPILOT_LIVE_RESEARCH=1`); normal tests need no model server or paid credentials.
 
 ---
 

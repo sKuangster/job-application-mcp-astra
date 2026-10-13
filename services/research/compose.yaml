@@ -1,0 +1,54 @@
+name: applypilot-research
+services:
+  perplexica:
+    # Maintained Perplexica is now Vane. Pinned upstream slim image, no upstream fork.
+    image: itzcrazykns1337/vane@sha256:21759f5428af08a6fcc0caadd96f2a604813100fc96ae9f127804b72e8e976ac
+    ports: ["127.0.0.1:3001:3000"]
+    environment:
+      SEARXNG_API_URL: http://searxng:8080
+      OLLAMA_BASE_URL: ${APPLYPILOT_RESEARCH_OLLAMA_URL:-http://ollama:11434}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - perplexica-data:/home/vane/data
+      - perplexica-uploads:/home/vane/uploads
+    depends_on:
+      searxng: {condition: service_healthy}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/providers').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
+  searxng:
+    image: searxng/searxng@sha256:ddd642cae6eac75412938fd846ddbf440a2df029cfeae8a562b8b205f4e35e25
+    ports: ["127.0.0.1:8081:8080"]
+    environment:
+      SEARXNG_SECRET: ${APPLYPILOT_SEARCH_SECRET:?use the research-stack script to generate a local secret}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    restart: unless-stopped
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  ollama:
+    image: ollama/ollama@sha256:adca95a12c2b386a8f9a995e7fa0600e187e3323b5e5522f5a6c3b1ec73eff99
+    ports: ["127.0.0.1:11435:11434"]
+    volumes: ["ollama-models:/root/.ollama"]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+volumes:
+  perplexica-data:
+  perplexica-uploads:
+  searxng-cache:
+  ollama-models:

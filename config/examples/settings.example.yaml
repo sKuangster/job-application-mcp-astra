@@ -94,6 +94,17 @@ reasoning:
     question_confidence: 0.70
     written_confidence: 0.80
     review_local_page_and_eligibility: true
+    local_warmup_patience_seconds: 180
+    local_operational_retries: 5
+    max_queue_wait_seconds: 600
+  writing:
+    enabled: true
+    local_revision_limit: 2
+    semantic_evaluation: true
+    fit_synthesis: true
+    cloud_share_full_profile: false
+    experience_file: config/experiences.local.yaml
+    max_evidence_items: 3
 
 answers:
   reuse_threshold: 0.93               # similarity to reuse a stored non-factual answer
@@ -110,8 +121,22 @@ eligibility:
 
 research:
   enabled: true
+  provider: perplexica                # maintained upstream Vane API | official | none
+  perplexica:
+    base_url: http://127.0.0.1:3001
+    searxng_url: http://127.0.0.1:8081
+    provider_name: Ollama
+    chat_model: qwen2.5:7b
+    embedding_model: nomic-embed-text:latest
+    optimization_mode: balanced
+    timeout: 120
+  max_requests_per_scope: 2
+  retry_seconds: 15
+  max_wait_seconds: 300
+  role_ttl_seconds: 259200
+  technology_ttl_seconds: 604800
   cache_ttl_seconds: 1209600          # 14 days; research is reused across jobs at the same company
-  max_pages: 3                        # official-site pages fetched per company
+  max_pages: 3                        # inspected public pages per bounded scope attempt
   fetch_timeout: 15
   max_bytes: 2000000
 
