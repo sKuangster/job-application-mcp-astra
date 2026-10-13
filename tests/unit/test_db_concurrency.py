@@ -30,7 +30,7 @@ def test_migrations_idempotent(tmp_path):
     d = Database(tmp_path / "m.sqlite3")
     d.initialize()
     d.initialize()
-    assert d.schema_version() == 1
+    assert d.schema_version() == 2
     assert d.meta_get("control") == "STOPPED"
 
 

@@ -31,16 +31,34 @@ class ProviderOutputError(ValueError):
 
 
 class OpenAIProvider:
-    def __init__(self, cfg: AppConfig, reasoning: ReasoningService, db: Database, *, client_factory: Any = None):
+    def __init__(self, cfg: AppConfig, reasoning: ReasoningService, db: Database, *, client_factory: Any = None,
+                 name: str = "openai"):
         self.cfg = cfg
         self.reasoning = reasoning
         self.db = db
-        self.settings = cfg.settings.reasoning.openai
+        self.name = name
+        self.settings = getattr(cfg.settings.reasoning, name)
+        self.escalation_reason = "direct"
         self._sem = asyncio.Semaphore(cfg.settings.automation.max_concurrent_model_requests)
         self.client_factory = client_factory or (lambda: httpx.AsyncClient(timeout=self.settings.timeout))
 
     def available(self) -> bool:
-        return bool(os.environ.get(self.settings.api_key_env))
+        return self.settings.enabled and (self.name == "ollama" or bool(os.environ.get(self.settings.api_key_env)))
+
+    async def health(self) -> bool:
+        """Metadata-only probe: never generate tokens or spend completion credits."""
+        if not self.available():
+            return False
+        async with self.client_factory() as client:
+            if self.name == "ollama":
+                response = await client.get(f"{self.settings.base_url.rstrip('/')}/api/tags", timeout=5)
+                response.raise_for_status()
+                names = {m.get("name") for m in response.json().get("models", [])}
+                return self.settings.model in names or self.settings.model + ":latest" in names
+            response = await client.get(f"{self.settings.base_url.rstrip('/')}/models/{self.settings.model}",
+                                        headers={"Authorization": f"Bearer {os.environ[self.settings.api_key_env]}"}, timeout=5)
+            response.raise_for_status()
+            return True
 
     async def run(self, closing: Callable[[], bool]) -> None:
         backoff = 5.0
@@ -63,14 +81,14 @@ class OpenAIProvider:
                     self.reasoning.fail_provider_items(item_ids, str(exc), provider="openai")
                 backoff = 5.0
             except Exception as exc:
-                log.warning("openai provider error: %s", exc)
+                log.warning("openai provider error: %s", type(exc).__name__)
                 if batch:
                     item_ids = [str(i["item_id"]) for i in batch["items"]]
                     self.db.return_reasoning(item_ids)
                     for app_id in batch["applications"]:
                         self.db.event(app_id, "reasoning", "provider_error",
                                       "OpenAI request failed; reasoning item returned to the queue",
-                                      {"error": f"{type(exc).__name__}: {str(exc)[:300]}",
+                                      {"error": type(exc).__name__,
                                        "item_ids": item_ids, "decision": "retry"}, level="WARNING")
                 await asyncio.sleep(backoff)
                 backoff = min(300.0, backoff * 2)
@@ -137,18 +155,34 @@ class OpenAIProvider:
             "strict": True, "schema": schema}}
             if structured else {"type": "json_object"})
         body = {"model": self.settings.model, "messages": messages, "response_format": response_format,
-                "max_completion_tokens": self.settings.max_output_tokens}
+                "max_completion_tokens" if self.name == "openai" else "max_tokens": self.settings.max_output_tokens}
+        if self.name == "ollama":
+            body = {"model": self.settings.model, "messages": messages, "stream": False, "format": schema,
+                    "options": {"num_predict": self.settings.max_output_tokens, "temperature": 0}}
+        # Bytes are a deliberately conservative token upper bound; repairs reserve again.
+        input_bound = len(json.dumps(body, ensure_ascii=False).encode("utf-8")) + 512
+        amount = (input_bound * self.settings.input_usd_per_million +
+                  self.settings.max_output_tokens * self.settings.output_usd_per_million) / 1_000_000
+        limits = self.cfg.settings.reasoning.hybrid
+        reservation = self.db.reserve_model_budget(
+            provider=self.name, application_ids=app_ids, amount=amount,
+            daily_limit=limits.daily_budget_usd, application_limit=limits.application_budget_usd,
+            premium_limit=limits.premium_calls_per_application)
         started = time.monotonic()
         ok, error, text = True, None, ""
         usage: dict[str, Any] = {}
         try:
             async with self.client_factory() as client:
-                resp = await client.post(f"{self.settings.base_url.rstrip('/')}/chat/completions", json=body,
-                                         headers={"Authorization": f"Bearer {os.environ[self.settings.api_key_env]}"})
+                path = "/api/chat" if self.name == "ollama" else "/chat/completions"
+                headers = {} if self.name == "ollama" else {"Authorization": f"Bearer {os.environ[self.settings.api_key_env]}"}
+                resp = await client.post(f"{self.settings.base_url.rstrip('/')}{path}", json=body,
+                                         headers=headers, timeout=self.settings.timeout)
                 resp.raise_for_status()
                 data = resp.json()
-                usage = data.get("usage") or {}
-                choice = data["choices"][0]
+                usage = ({"prompt_tokens": data.get("prompt_eval_count"), "completion_tokens": data.get("eval_count")}
+                         if self.name == "ollama" else data.get("usage") or {})
+                choice = ({"message": data.get("message"), "finish_reason": data.get("done_reason", "stop")}
+                          if self.name == "ollama" else data["choices"][0])
                 message = choice.get("message") or {}
                 if message.get("refusal"):
                     raise ProviderOutputError(f"model refusal: {str(message['refusal'])[:300]}")
@@ -157,15 +191,20 @@ class OpenAIProvider:
                 text = message.get("content") or "{}"
                 return text, json.loads(text)
         except Exception as exc:
-            ok, error = False, f"{type(exc).__name__}: {str(exc)[:300]}"
+            ok, error = False, type(exc).__name__
             raise
         finally:
             request_chars = len(json.dumps(messages, default=str))
-            self.db.record_model_call(provider="openai", kind="completion_structured" if structured else "completion_json",
+            estimated = usage.get("prompt_tokens") is None or usage.get("completion_tokens") is None
+            input_tokens = usage.get("prompt_tokens") if usage.get("prompt_tokens") is not None else input_bound
+            output_tokens = usage.get("completion_tokens") if usage.get("completion_tokens") is not None else self.settings.max_output_tokens
+            cost = (input_tokens * self.settings.input_usd_per_million + output_tokens * self.settings.output_usd_per_million) / 1_000_000
+            self.db.record_model_call(provider=self.name, kind="completion_structured" if structured else "completion_json",
                                       items=item_count, application_ids=app_ids, request_chars=request_chars,
                                       response_chars=len(text), duration_ms=int((time.monotonic() - started) * 1000),
-                                      ok=ok, error=error, input_tokens=usage.get("prompt_tokens"),
-                                      output_tokens=usage.get("completion_tokens"))
+                                      ok=ok, error=error, input_tokens=input_tokens, output_tokens=output_tokens,
+                                      model=self.settings.model, estimated_usd=cost, usage_estimated=estimated,
+                                      escalation_reason=self.escalation_reason, reservation_id=reservation)
 
 
 def _batch_schema(items: list[dict[str, Any]]) -> dict[str, Any]:

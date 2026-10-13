@@ -844,8 +844,9 @@ class Database:
         def op(c: sqlite3.Connection) -> list[dict[str, Any]]:
             sql = ("SELECT DISTINCT r.* FROM reasoning_items r " +
                    ("JOIN reasoning_waiters w ON w.item_id=r.id " if application_id else "") +
-                   "WHERE (r.status='PENDING' OR (r.status='LEASED' AND r.lease_until < ?))")
-            params: list[Any] = [now]
+                   "WHERE (r.status='PENDING' OR (r.status='LEASED' AND r.lease_until < ?)) "
+                   "AND NOT EXISTS (SELECT 1 FROM reasoning_routes t WHERE t.item_id=r.id AND t.available_at>?)")
+            params: list[Any] = [now, now]
             if application_id:
                 sql += " AND w.application_id=?"
                 params.append(application_id)
@@ -1118,12 +1119,62 @@ class Database:
     def record_model_call(self, *, provider: str, kind: str, items: int, application_ids: list[str],
                           request_chars: int, response_chars: int, duration_ms: int, ok: bool = True,
                           input_tokens: int | None = None, output_tokens: int | None = None,
-                          error: str | None = None) -> None:
-        self.write(lambda c: c.execute(
+                          error: str | None = None, model: str | None = None, estimated_usd: float = 0,
+                          escalation_reason: str | None = None, usage_estimated: bool = False,
+                          reservation_id: str | None = None) -> None:
+        def op(c: sqlite3.Connection) -> None:
+            c.execute(
             "INSERT INTO model_calls(ts, provider, kind, items, application_ids, request_chars, response_chars, input_tokens, "
-            "output_tokens, duration_ms, ok, error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "output_tokens, duration_ms, ok, error, model, estimated_usd, escalation_reason, usage_estimated) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (self.clock(), provider, kind, items, dumps(application_ids), request_chars, response_chars, input_tokens,
-             output_tokens, duration_ms, int(ok), error)))
+             output_tokens, duration_ms, int(ok), error, model, estimated_usd, escalation_reason, int(usage_estimated)))
+            if reservation_id:
+                c.execute("UPDATE model_reservations SET status='DONE' WHERE id=?", (reservation_id,))
+        self.write(op)
+
+    def reserve_model_budget(self, *, provider: str, application_ids: list[str], amount: float,
+                             daily_limit: float, application_limit: float, premium_limit: int) -> str:
+        """Reserve worst-case cost before sending a request, atomically across processes.
+
+        Unsettled crash reservations remain charged. A request can have reached a paid
+        endpoint before process death; releasing those automatically would evade budgets.
+        """
+        def op(c: sqlite3.Connection) -> str:
+            day = int(self.clock() // 86400) * 86400
+            spent = c.execute("SELECT COALESCE(SUM(estimated_usd),0) FROM model_calls WHERE ts>=?", (day,)).fetchone()[0]
+            held = c.execute("SELECT COALESCE(SUM(reserved_usd),0) FROM model_reservations WHERE status='PENDING' AND ts>=?", (day,)).fetchone()[0]
+            if amount and spent + held + amount > daily_limit + 1e-12:
+                raise ValueError("daily budget exhausted")
+            for app_id in application_ids:
+                totals = c.execute(
+                    "SELECT COALESCE(SUM(estimated_usd / MAX(1,json_array_length(application_ids))),0), "
+                    "SUM(CASE WHEN provider='openai' AND kind LIKE 'completion%' THEN 1 ELSE 0 END) "
+                    "FROM model_calls WHERE EXISTS (SELECT 1 FROM json_each(application_ids) WHERE value=?)", (app_id,)).fetchone()
+                pending = c.execute(
+                    "SELECT COALESCE(SUM(reserved_usd / MAX(1,json_array_length(application_ids))),0), "
+                    "SUM(CASE WHEN provider='openai' THEN 1 ELSE 0 END) FROM model_reservations "
+                    "WHERE status='PENDING' AND EXISTS (SELECT 1 FROM json_each(application_ids) WHERE value=?)", (app_id,)).fetchone()
+                if amount and totals[0] + pending[0] + amount / max(1, len(application_ids)) > application_limit + 1e-12:
+                    raise ValueError("application budget exhausted")
+                if provider == "openai" and (totals[1] or 0) + (pending[1] or 0) >= premium_limit:
+                    raise ValueError("premium request limit exhausted")
+            reservation = new_id("cost")
+            c.execute("INSERT INTO model_reservations(id,ts,provider,application_ids,reserved_usd) VALUES (?,?,?,?,?)",
+                      (reservation, self.clock(), provider, dumps(application_ids), amount))
+            return reservation
+        return self.write(op)
+
+    def cost_totals(self) -> dict[str, Any]:
+        return {
+            "estimated_usd": self.query("SELECT COALESCE(SUM(estimated_usd),0) AS usd FROM model_calls")[0]["usd"],
+            "pending_reserved_usd": self.query("SELECT COALESCE(SUM(reserved_usd),0) AS usd FROM model_reservations WHERE status='PENDING'")[0]["usd"],
+            "by_provider_model": self.query("SELECT provider,model,SUM(estimated_usd) AS estimated_usd, SUM(input_tokens) AS input_tokens, "
+                                            "SUM(output_tokens) AS output_tokens, COUNT(*) AS requests FROM model_calls "
+                                            "WHERE kind LIKE 'completion%' GROUP BY provider,model"),
+            "by_application": self.query("SELECT j.value AS application_id, SUM(m.estimated_usd / MAX(1,json_array_length(m.application_ids))) AS estimated_usd "
+                                         "FROM model_calls m,json_each(m.application_ids) j GROUP BY j.value"),
+        }
 
     # ------------------------------------------------------------------ ingest runs
     def start_ingest(self, mode: str, source: str) -> int:

@@ -155,21 +155,59 @@ class BrowserSettings(_Strict):
 
 
 class OpenAISettings(_Strict):
+    enabled: bool = True
     model: str = "gpt-5-mini"
     base_url: str = "https://api.openai.com/v1"
     api_key_env: str = "OPENAI_API_KEY"
     max_output_tokens: int = Field(4000, ge=256, le=64000)
     timeout: float = Field(120, ge=5, le=600)
+    input_usd_per_million: float = Field(0.25, ge=0)
+    output_usd_per_million: float = Field(2.0, ge=0)
+
+
+class OllamaSettings(OpenAISettings):
+    model: str = "qwen2.5:7b"
+    base_url: str = "http://127.0.0.1:11434"
+    api_key_env: str = "OLLAMA_API_KEY"
+    input_usd_per_million: float = 0
+    output_usd_per_million: float = 0
+
+
+class GeminiSettings(OpenAISettings):
+    enabled: bool = False
+    model: str = "gemini-2.5-flash"
+    base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    api_key_env: str = "GEMINI_API_KEY"
+    input_usd_per_million: float = 0.30
+    output_usd_per_million: float = 2.50
+
+
+class HybridSettings(_Strict):
+    premium_enabled: bool = False
+    daily_budget_usd: float = Field(1.0, ge=0)
+    application_budget_usd: float = Field(0.10, ge=0)
+    premium_calls_per_application: int = Field(3, ge=0, le=100)
+    retries_per_tier: int = Field(2, ge=1, le=10)
+    retry_seconds: float = Field(10, ge=0, le=3600)
+    health_cooldown_seconds: float = Field(60, ge=1, le=3600)
+    question_confidence: float = Field(0.70, ge=0, le=1)
+    written_confidence: float = Field(0.80, ge=0, le=1)
+    # Page/eligibility decisions have no model confidence field, so validate their shape
+    # and always obtain cheap-cloud review after a local answer, when enabled.
+    review_local_page_and_eligibility: bool = True
 
 
 class ReasoningSettings(_Strict):
-    provider: Literal["mcp", "openai", "none"] = "mcp"
+    provider: Literal["hybrid", "mcp", "openai", "none"] = "hybrid"
     batch_max_items: int = Field(12, ge=1, le=100)
     batch_collect_seconds: float = Field(2.0, ge=0, le=60)
     item_lease_seconds: float = Field(900, ge=30, le=86400)
     park_timeout_seconds: float = Field(172800, ge=60, description="Then NEEDS_USER")
     min_confidence: float = Field(0.5, ge=0, le=1)
     openai: OpenAISettings = OpenAISettings()
+    ollama: OllamaSettings = OllamaSettings()
+    gemini: GeminiSettings = GeminiSettings()
+    hybrid: HybridSettings = HybridSettings()
 
 
 class AnswerSettings(_Strict):

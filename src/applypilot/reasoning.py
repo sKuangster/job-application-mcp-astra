@@ -264,6 +264,7 @@ class ReasoningService:
                 continue
             if research_saved:
                 normalized.setdefault("research_ids", research_saved)
+            normalized["provider"] = provider
             waiters = self.db.complete_reasoning(item_id, normalized)
             self.metrics["items_answered"] += 1
             accepted.append({"item_id": item_id, "status": "accepted"})
@@ -382,6 +383,13 @@ class ReasoningService:
                 return True, {"needs_user": truncate(str(action.get("reason") or res.get("reason") or
                                                            "manual page action required"), 500)}, ""
             return True, {"action": action, "reason": truncate(str(res.get("reason") or ""), 500)}, ""
+        if p.get("qclass") in {"FACTUAL", "EEO", "CONSENT", "PREFERENCE"}:
+            # Ambiguous option labels must never grant a model authority to invent
+            # facts, identity attributes or user preferences. Exact mappings can be
+            # accepted deterministically; ambiguous semantics require human input.
+            known = (p.get("hints") or {}).get("known_value") or []
+            if not known or not any(str(res.get("value")).casefold() == str(v).casefold() for v in known):
+                return False, {}, "source-of-truth answer requires an exact known value or human input"
         if "value" not in res:
             return False, {}, "missing value"
         value = res["value"]

@@ -737,7 +737,7 @@ class ApplicationRunner:
             if mapped.ok:
                 sources = {"reasoning_item": result.get("_item_id"), "fact_paths": result.get("fact_paths"),
                            "template": result.get("template"), "research_ids": result.get("research_ids"),
-                           "provider": "astra"}
+                           "provider": result.get("provider", "astra")}
                 return Resolution(f.key, f.question, normalize_question(f.question),
                                   existing["qclass"] if existing else "UNKNOWN",
                                   existing.get("catalog_id") if existing else None, "resolved", value=mapped.value,

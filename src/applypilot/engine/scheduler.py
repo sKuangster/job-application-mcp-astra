@@ -157,6 +157,12 @@ class Engine:
         self.tasks.append(asyncio.create_task(self._discovery(), name="discovery"))
         if auto.captcha_auto_resume:
             self.tasks.append(asyncio.create_task(self._captcha_watch(), name="captcha-watch"))
+        if self.cfg.settings.reasoning.provider == "hybrid":
+            from applypilot.hybrid import HybridRouter
+
+            for i in range(auto.max_concurrent_model_requests):
+                router = HybridRouter(self.cfg, self.reasoning, self.db)
+                self.tasks.append(asyncio.create_task(router.run(lambda: self.closing), name=f"hybrid-{i}"))
         if self.cfg.settings.reasoning.provider == "openai":
             from applypilot.providers import OpenAIProvider
 
