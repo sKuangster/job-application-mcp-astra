@@ -53,7 +53,9 @@ def deterministic_review(item: dict[str, Any], result: dict[str, Any]) -> list[s
     evidence = grounding.get("candidate_evidence") or []
     sources = grounding.get("opportunity_evidence") or []
     feedback = []
-    if len(text.split()) < min(25, (item.get("limits") or {}).get("max_words", 100) // 2):
+    limits = item.get("limits") or {}
+    minimum_words = max(1, min(25, limits.get("max_words", 100) // 2, limits.get("max_chars", 1000) // 12))
+    if len(text.split()) < minimum_words:
         feedback.append("Develop a specific, substantive answer within the field limits.")
     if re.search(r"your innovative company|passionate about innovation|dynamic environment|perfect fit", text, re.I) and not sources:
         feedback.append("Replace generic praise with concrete opportunity and candidate evidence.")

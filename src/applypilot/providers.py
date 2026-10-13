@@ -24,7 +24,7 @@ import httpx
 from applypilot.config import AppConfig
 from applypilot.db import Database
 from applypilot.reasoning import ReasoningService
-from applypilot.writing import critic_prompt
+from applypilot.writing import WritingReviewError, critic_prompt
 
 log = logging.getLogger("applypilot.provider")
 MAX_OUTPUT_REPAIRS = 2
@@ -234,6 +234,9 @@ class OpenAIProvider:
                      "\n- ".join(last_errors[:10]) +
                      "\nReturn a corrected complete results array. Do not omit any item."},
                 ])
+        if self.cfg.settings.reasoning.writing.enabled and any(item.get("grounding") for item in batch["items"]):
+            category = "unsupported_claim" if any("candidate profile" in e or "candidate.education" in e for e in last_errors) else "format"
+            raise WritingReviewError(category, [e[:250] for e in last_errors[:6]] or ["Return a complete valid answer envelope."])
         raise ProviderOutputError("; ".join(last_errors[:10]) or "model returned no usable results")
 
     async def _request(self, messages: list[dict[str, str]], *, schema: dict[str, Any], structured: bool,

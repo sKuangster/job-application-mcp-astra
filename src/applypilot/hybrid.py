@@ -87,6 +87,9 @@ class HybridRouter:
     async def _process(self, batch: dict[str, Any]) -> None:
         item = batch["items"][0]
         item_id = str(item["item_id"])
+        writing_item = (self.cfg.settings.reasoning.writing.enabled and item["kind"] == "question"
+                        and item.get("field_type") not in {"select", "radio", "combobox", "checkbox_group", "checkbox", "date", "month"}
+                        and not item.get("options"))
         if item["kind"] == "question" and item.get("qclass") in {"UNKNOWN", "FACTUAL", "EEO", "CONSENT", "PREFERENCE"}:
             self.reasoning.submit([{"item_id": item_id, "needs_user":
                                    "Unresolved fact, preference, consent or unclassified question requires human input."}],
@@ -134,7 +137,7 @@ class HybridRouter:
             self.db.meta_set(health_key, {**health, "checked_at": self.db.clock(), "retry_at": 0,
                                          "healthy": True, "state": readiness["state"], "model_present": True,
                                          "loaded": readiness["state"] == "ready"})
-            if self.cfg.settings.reasoning.writing.enabled and item["kind"] == "question":
+            if writing_item:
                 if not await self._prepare_writing(batch, route):
                     return
                 if name == "ollama" and self.cfg.settings.reasoning.writing.fit_synthesis:
@@ -152,22 +155,23 @@ class HybridRouter:
                 await asyncio.gather(heartbeat, return_exceptions=True)
             errors = self.reasoning.validate_provider_results([item_id], results)
             if errors:
-                if self.cfg.settings.reasoning.writing.enabled and item["kind"] == "question":
-                    raise WritingReviewError("format", [error[:250] for error in errors[:6]])
+                if writing_item:
+                    category = "unsupported_claim" if any("candidate profile" in e or "candidate.education" in e for e in errors) else "format"
+                    raise WritingReviewError(category, [error[:250] for error in errors[:6]])
                 raise ProviderOutputError("invalid response")
             result = results[0]
             if result.get("needs_user"):
                 self.reasoning.submit(results, provider=name)
                 return
             if item["kind"] == "question":
-                if self.cfg.settings.reasoning.writing.enabled:
+                if writing_item:
                     await self._review(batch, result)
                     result["research_ids"] = sorted({source["research_id"] for source in
                                                      item["grounding"]["opportunity_evidence"] if source.get("research_id")})
                 threshold = (self.settings.written_confidence if item.get("qclass") in {"WRITTEN", "JOB_SPECIFIC"}
                              else self.settings.question_confidence)
                 confidence = float(result.get("confidence", 0))
-                if (not self.cfg.settings.reasoning.writing.enabled and
+                if (not writing_item and
                         (not math.isfinite(confidence) or not 0 <= confidence <= 1 or confidence < max(
                             threshold, self.cfg.settings.reasoning.min_confidence))):
                     raise ProviderOutputError("low confidence")

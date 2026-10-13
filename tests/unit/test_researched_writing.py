@@ -287,6 +287,40 @@ async def test_invalid_field_format_gets_actionable_local_revision(cfg, db):
     cloud.complete.assert_not_awaited()
 
 
+async def test_job_specific_choices_do_not_receive_essay_substance_checks(cfg, db):
+    key = make_job(db)
+    app, _ = db.create_application(key, mode="backlog")
+    cfg.settings.reasoning.writing.enabled = True
+    rs = ReasoningService(db, cfg)
+    item = rs.enqueue(app_id=app["id"], kind="question", payload={"question": "Which team matches these documented Python skills?",
+                      "qclass": "JOB_SPECIFIC", "field_type": "select", "options": ["Platform", "Design"],
+                      "dedupe_key": "team-choice"}, field_key="team")["id"]
+    local = writer([{"item_id": item, "value": "Platform", "confidence": .99}])
+    router = HybridRouter(cfg, rs, db, providers={n: local for n in ("ollama", "gemini", "openai")})
+    await router.process(await rs.get_batch(owner="hybrid"))
+    assert rs.results_for(app["id"])["team"]["value"] == "Platform"
+    local.evaluate_writing.assert_not_awaited()
+
+
+def test_substance_check_respects_short_character_limits():
+    assert not deterministic_review({"limits": {"max_chars": 50}}, {"value": "I build reliable Python telemetry tools."})
+
+
+async def test_real_provider_biographical_validation_exhaustion_requests_evidence(cfg, db):
+    from applypilot.writing import WritingReviewError
+
+    _, rs, batch = await queued(cfg, db)
+    item = batch["items"][0]["item_id"]
+    batch["items"][0]["grounding"] = {"candidate_evidence": [], "opportunity_evidence": []}
+    def reply(_):
+        result = {"results": [{"item_id": item, "value": "My GPA is 4.0 and I build Python telemetry tools.", "confidence": .99}]}
+        return httpx.Response(200, json={"message": {"content": json.dumps(result)}, "done_reason": "stop"})
+    provider = OpenAIProvider(cfg, rs, db, name="ollama", client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(reply)))
+    with pytest.raises(WritingReviewError) as caught:
+        await provider.complete(batch)
+    assert caught.value.category == "unsupported_claim"
+
+
 async def test_busy_local_model_waits_before_paid_escalation(cfg, db):
     _, rs, batch = await queued(cfg, db)
     cfg.settings.reasoning.hybrid.local_warmup_patience_seconds = 180
