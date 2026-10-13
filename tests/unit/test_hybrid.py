@@ -154,6 +154,7 @@ async def test_real_adapter_wire_format_usage_cost_and_health(cfg, db, monkeypat
         body = json.loads(request.content)
         if name == "ollama":
             assert body["stream"] is False and "format" in body and "/api/chat" in str(request.url)
+            assert body["options"]["num_ctx"] == 16384
             return httpx.Response(200, json={"message": {"content": json.dumps(result)}, "prompt_eval_count": 100,
                                             "eval_count": 20, "done_reason": "stop"})
         assert body["model"] == settings.model

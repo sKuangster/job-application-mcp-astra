@@ -170,7 +170,8 @@ class OpenAIProvider:
                 "max_completion_tokens" if self.name == "openai" else "max_tokens": self.settings.max_output_tokens}
         if self.name == "ollama":
             body = {"model": self.settings.model, "messages": messages, "stream": False, "format": schema,
-                    "options": {"num_predict": self.settings.max_output_tokens, "temperature": 0}}
+                    "options": {"num_predict": self.settings.max_output_tokens, "temperature": 0,
+                                "num_ctx": self.cfg.settings.reasoning.ollama.context_tokens}}
         # Bytes are a deliberately conservative token upper bound; repairs reserve again.
         input_bound = len(json.dumps(body, ensure_ascii=False).encode("utf-8")) + 512
         amount = (input_bound * self.settings.input_usd_per_million +

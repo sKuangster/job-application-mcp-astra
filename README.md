@@ -234,6 +234,8 @@ Model confidence is self-reported, not a guarantee of correctness: keep final re
 1. Install [Ollama](https://ollama.com/download), start its local service (`ollama serve` if
    it is not already running), then run `ollama pull qwen2.5:7b`. The model download needs
    several GB of disk/RAM. Change `reasoning.ollama.model` to match any alternative you pull.
+   Ollama requests a 16,384-token context by default; tune `reasoning.ollama.context_tokens`
+   for the model and available memory, allowing space for the candidate profile and generated output.
 2. Run `applypilot setup`, fill the ignored candidate/preferences/profile files, and add resumes.
    Existing local files are never overwritten. Run `applypilot doctor`.
 3. Put cloud credentials in the ignored `.env`: `GEMINI_API_KEY=...` and, optionally,

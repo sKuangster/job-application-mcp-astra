@@ -182,6 +182,7 @@ class OllamaSettings(OpenAISettings):
     model: str = "qwen2.5:7b"
     base_url: str = "http://127.0.0.1:11434"
     api_key_env: str = "OLLAMA_API_KEY"
+    context_tokens: int = Field(16384, ge=2048, le=131072)
     input_usd_per_million: float = Field(0, ge=0, allow_inf_nan=False)
     output_usd_per_million: float = Field(0, ge=0, allow_inf_nan=False)
 

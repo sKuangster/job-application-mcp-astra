@@ -68,6 +68,7 @@ reasoning:
   ollama:
     enabled: true
     model: qwen2.5:7b
+    context_tokens: 16384               # profile + templates + job + output; tune for local RAM
     base_url: http://127.0.0.1:11434
     max_output_tokens: 4000
     timeout: 120
