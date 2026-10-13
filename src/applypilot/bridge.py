@@ -62,7 +62,7 @@ class BrowserBridge:
 
     @property
     def connected(self) -> bool:
-        return self._ws is not None
+        return self._ws is not None and self._connected.is_set()
 
     def status(self) -> dict[str, Any]:
         return {"connected": self.connected, "last_seen": self.last_seen, "connected_at": self.connected_at,
@@ -93,10 +93,11 @@ class BrowserBridge:
                 await previous.close(code=4000, reason="replaced by a newer connection")
             self._fail_pending("bridge connection replaced")
         self._ws = ws
+        self._connected.clear()
+        self.info = {}
         self.metrics["reconnects"] += 1
         self.connected_at = self.last_seen = time.time()
-        self._connected.set()
-        log.info("Firefox extension connected")
+        log.info("Firefox transport connected; waiting for ownership handshake")
         pinger = asyncio.create_task(self._ping_loop(ws))
         try:
             while True:
@@ -150,8 +151,12 @@ class BrowserBridge:
                     fut.set_exception(BrowserError(str(err.get("code") or "INTERNAL"), str(err.get("message") or "error"),
                                                    err.get("details")))
         elif mtype == "hello":
+            if not isinstance(msg.get("browser"), str) or not msg["browser"] or not isinstance(msg.get("owned"), list):
+                raise ValueError("invalid Firefox ownership handshake")
             self.info = {"version": msg.get("version"), "browser": msg.get("browser")}
             self.owned = {str(o["app_id"]): o for o in msg.get("owned") or [] if o.get("app_id")}
+            self._connected.set()
+            log.info("Firefox ownership handshake complete")
             await self._emit("hello", None, {"owned": list(self.owned)})
         elif mtype == "event":
             app_id = msg.get("app_id")

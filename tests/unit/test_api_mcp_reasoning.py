@@ -105,6 +105,22 @@ def rs(cfg, db):
     return ReasoningService(db, cfg)
 
 
+async def test_bridge_is_ready_only_after_ownership_handshake():
+    bridge = BrowserBridge()
+    bridge._ws = object()
+    assert bridge.connected is False
+    await bridge._handle({"type": "hello", "browser": "firefox", "version": "1", "owned": []})
+    assert bridge.connected is True and bridge.status()["browser"] == "firefox"
+
+
+async def test_invalid_bridge_handshake_never_sets_ready():
+    bridge = BrowserBridge()
+    bridge._ws = object()
+    with pytest.raises(ValueError, match="handshake"):
+        await bridge._handle({"type": "hello", "browser": None, "owned": []})
+    assert bridge.connected is False
+
+
 def _app(db, **kw):
     job_id = make_job(db, **kw)
     app, _ = db.create_application(job_id, mode="backlog")
