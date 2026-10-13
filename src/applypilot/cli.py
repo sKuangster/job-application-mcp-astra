@@ -73,6 +73,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
         print(f"Created {settings}")
     for d in ("resumes", "templates", "profile"):
         (paths.root / d).mkdir(exist_ok=True)
+    for target, example_name in ((paths.config_dir / "candidate.yaml", "candidate.blank.yaml"),
+                            (paths.config_dir / "preferences.yaml", "preferences.example.yaml"),
+                            (paths.profile_dir / "profile.md", "profile.example.md")):
+        source = paths.config_dir / "examples" / example_name
+        if not target.exists() and source.exists():
+            shutil.copyfile(source, target)
     for key, value in values.items():
         os.environ[key] = value
     cfg = _cfg(strict=False)

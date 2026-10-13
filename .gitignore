@@ -26,6 +26,8 @@ web-ext-artifacts/
 *.log
 # Candidate-owned content.  Public examples, templates, and placeholders remain tracked.
 /config/candidate.yaml
+/config/preferences.yaml
+/profile/*
 /config/*.local.yaml
 /config/*.local.yml
 /profile/*.local.md
