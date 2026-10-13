@@ -48,6 +48,8 @@ def _bridge(*, connected: bool = False):
     bridge = BrowserBridge()
     if connected:
         bridge._ws = object()  # type: ignore[assignment]
+        bridge.info = {"browser": "firefox", "version": "test"}
+        bridge._connected.set()  # simulate a completed ownership handshake
     return bridge
 
 
